@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Friend Atlas 🌍</title>
+  <meta name="description" content="Map your friendships across the world">
+  <meta property="og:title" content="Friend Atlas">
+  <meta property="og:description" content="Map your friendships across the world. Create your atlas, share it, and let friends drop their pin!">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#09090b">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg:#09090b;--card:#18181b;--card-hover:#27272a;--border:#3f3f46;--accent:#6366f1;--accent-hover:#818cf8;--text:#fafafa;--text-muted:#a1a1aa;--text-dim:#71717a;--success:#22c55e;--danger:#ef4444}
+    html,body{height:100%;overflow:hidden;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:10000;transition:opacity .3s}
+    #loading.hidden{opacity:0;pointer-events:none}
+    .loading-globe{font-size:72px;animation:pulse 1.5s infinite}
+    .loading-spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+    #welcome{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9000}
+    #welcome.hidden{display:none}
+    .welcome-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:48px 40px;max-width:420px;width:100%;text-align:center}
+    .welcome-globe{font-size:72px;display:block;margin-bottom:20px}
+    .welcome-title{font-size:32px;font-weight:800;margin-bottom:12px}
+    .welcome-desc{color:var(--text-muted);font-size:15px;margin-bottom:36px}
+    .user-badge{display:inline-flex;align-items:center;gap:12px;padding:12px 20px;background:var(--card-hover);border-radius:100px;margin-bottom:28px}
+    .user-badge-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#8b5cf6);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;overflow:hidden}
+    .user-badge-avatar img{width:100%;height:100%;object-fit:cover}
+    .user-badge-info{text-align:left}
+    .user-badge-name{font-weight:600;font-size:14px}
+    .user-badge-email{font-size:12px;color:var(--text-dim)}
+    .section-label{display:block;font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px}
+    .input{width:100%;padding:16px 20px;background:var(--card-hover);border:2px solid var(--border);border-radius:12px;color:var(--text);font-size:16px;font-family:inherit;outline:none;transition:.2s}
+    .input:focus{border-color:var(--accent)}
+    .input::placeholder{color:var(--text-dim)}
+    .input.centered{text-align:center}
+    .input.code{letter-spacing:8px;font-size:20px;font-weight:700;text-transform:uppercase}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:16px 32px;border:none;border-radius:12px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;text-decoration:none;transition:.2s}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;box-shadow:0 4px 20px rgba(99,102,241,.4)}
+    .btn-primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 30px rgba(99,102,241,.5)}
+    .btn-secondary{background:var(--card-hover);color:var(--text);border:2px solid var(--border)}
+    .btn-secondary:hover:not(:disabled){background:var(--border)}
+    .btn-danger{background:var(--danger);color:#fff}
+    .btn-full{width:100%}
+    .divider{display:flex;align-items:center;gap:16px;margin:28px 0}
+    .divider-line{flex:1;height:1px;background:var(--border)}
+    .divider-text{color:var(--text-dim);font-size:13px}
+    .join-row{display:flex;gap:12px}
+    .join-row .input{flex:1}
+    .error-msg{margin-top:16px;padding:12px 16px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;color:#fca5a5;font-size:14px;display:none}
+    .error-msg.show{display:block}
+    .sign-out{display:inline-block;margin-top:24px;color:var(--text-dim);font-size:14px;text-decoration:none}
+    .sign-out:hover{color:var(--text)}
+    #header{position:fixed;top:0;left:0;right:0;height:64px;padding:0 20px;background:rgba(9,9,11,.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;z-index:1000}
+    .header-left,.header-right{display:flex;align-items:center;gap:12px}
+    .logo{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800}
+    .logo-emoji{font-size:28px}
+    .header-btn{display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:.2s;border:none;text-decoration:none}
+    .share-btn{background:rgba(99,102,241,.15);color:var(--text)}
+    .share-btn:hover{background:rgba(99,102,241,.25)}
+    .share-btn .code{color:var(--accent-hover);font-weight:700;letter-spacing:2px}
+    .add-btn{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff}
+    .add-btn:hover{transform:translateY(-1px)}
+    .user-btn{width:40px;height:40px;padding:0;background:var(--card-hover);border-radius:50%;overflow:hidden}
+    .user-btn:hover{background:var(--border)}
+    .user-btn-inner{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff}
+    .user-btn img{width:100%;height:100%;object-fit:cover}
+    #user-menu{position:fixed;top:72px;right:20px;min-width:180px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:8px;z-index:1001;display:none;box-shadow:0 16px 48px rgba(0,0,0,.5)}
+    #user-menu.show{display:block}
+    .menu-item{display:block;width:100%;padding:12px 16px;background:none;border:none;border-radius:8px;color:var(--text);font-size:14px;font-family:inherit;text-align:left;cursor:pointer;text-decoration:none}
+    .menu-item:hover{background:var(--card-hover)}
+    .menu-item.danger{color:var(--danger)}
+    #map{position:fixed;top:64px;left:0;right:0;bottom:0;z-index:1}
+    .leaflet-control-attribution{background:rgba(9,9,11,.85)!important;color:var(--text-dim)!important;font-size:10px!important}
+    .leaflet-control-attribution a{color:var(--text-muted)!important}
+    .leaflet-control-zoom{border:none!important;border-radius:10px!important;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4)!important}
+    .leaflet-control-zoom a{background:var(--card)!important;color:var(--text)!important;border:none!important;width:40px!important;height:40px!important;line-height:40px!important}
+    .leaflet-control-zoom a:hover{background:var(--accent)!important}
+    .map-pin{display:flex;align-items:center;justify-content:center;border-radius:50%;font-weight:800;color:#fff;cursor:pointer;transition:transform .15s;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+    .map-pin:hover{transform:scale(1.15)}
+    .map-pin.selected{border-width:4px;box-shadow:0 0 0 4px rgba(255,255,255,.3),0 8px 24px rgba(0,0,0,.4)}
+    .map-pin img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+    #stats{position:fixed;bottom:24px;left:24px;display:flex;gap:16px;padding:14px 20px;background:var(--card);border:1px solid var(--border);border-radius:100px;font-size:13px;z-index:100}
+    .stat{display:flex;align-items:center;gap:6px}
+    .stat-val{font-weight:800;color:var(--accent-hover)}
+    .stat-label{color:var(--text-muted)}
+    #empty{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:100;display:none}
+    #empty.show{display:block}
+    .empty-icon{font-size:72px;margin-bottom:16px}
+    .empty-title{font-size:26px;font-weight:800;margin-bottom:12px}
+    .empty-desc{color:var(--text-muted);font-size:15px;margin-bottom:24px;max-width:280px}
+    #sidebar{position:fixed;top:84px;left:20px;width:220px;max-height:calc(100vh - 160px);display:flex;flex-direction:column;gap:8px;overflow-y:auto;z-index:100}
+    .friend-item{display:flex;align-items:center;gap:12px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:.2s}
+    .friend-item:hover{background:var(--card-hover);transform:translateX(4px)}
+    .friend-item.selected{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4)}
+    .friend-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;overflow:hidden}
+    .friend-avatar img{width:100%;height:100%;object-fit:cover}
+    .friend-info{flex:1;min-width:0}
+    .friend-name{font-size:14px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .friend-city{font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #detail{position:fixed;bottom:24px;right:24px;width:300px;padding:24px;background:var(--card);border:1px solid var(--border);border-radius:20px;z-index:100;display:none}
+    #detail.show{display:block}
+    .detail-close{position:absolute;top:12px;right:12px;width:32px;height:32px;background:var(--card-hover);border:none;border-radius:8px;color:var(--text-muted);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .detail-close:hover{color:var(--text)}
+    .detail-avatar{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;margin-bottom:16px;overflow:hidden}
+    .detail-avatar img{width:100%;height:100%;object-fit:cover}
+    .detail-name{font-size:20px;font-weight:800;margin-bottom:4px}
+    .detail-city{font-size:14px;color:var(--text-muted)}
+    .detail-note{margin-top:16px;padding:12px;background:var(--card-hover);border-radius:10px;font-size:14px;color:var(--text-muted);font-style:italic}
+    .detail-meta{margin-top:12px;font-size:12px;color:var(--text-dim)}
+    .detail-remove{margin-top:16px;background:none;border:none;color:rgba(239,68,68,.7);font-size:13px;cursor:pointer;font-family:inherit;padding:0;display:none}
+    .detail-remove.show{display:block}
+    .detail-remove:hover{color:var(--danger)}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:5000;padding:24px}
+    .modal-overlay.show{display:flex}
+    .modal{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:32px;max-width:440px;width:100%;position:relative;max-height:90vh;overflow-y:auto}
+    .modal-close{position:absolute;top:16px;right:16px;width:40px;height:40px;background:var(--card-hover);border:none;border-radius:10px;color:var(--text-muted);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .modal-close:hover{color:var(--text)}
+    .modal-icon{font-size:48px;text-align:center;margin-bottom:16px}
+    .modal-title{font-size:24px;font-weight:800;margin-bottom:8px;text-align:center}
+    .modal-desc{color:var(--text-muted);font-size:15px;text-align:center;margin-bottom:28px}
+    .share-code{font-size:36px;font-weight:800;letter-spacing:8px;color:var(--accent-hover);text-align:center;padding:20px;background:rgba(99,102,241,.1);border-radius:16px;margin-bottom:24px}
+    .share-preview{margin-top:20px;padding:16px;background:var(--card-hover);border-radius:12px}
+    .share-preview-label{font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px}
+    .share-preview-text{font-size:13px;color:var(--text-muted);line-height:1.7;white-space:pre-line}
+    .form-group{margin-bottom:20px}
+    .form-label{display:block;font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+    .form-label .opt{color:var(--text-dim);font-weight:400;text-transform:none}
+    .city-wrap{position:relative}
+    #city-dropdown{position:absolute;top:calc(100% + 8px);left:0;right:0;background:var(--card);border:2px solid var(--accent);border-radius:14px;max-height:250px;overflow-y:auto;z-index:9999;display:none;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+    #city-dropdown.show{display:block}
+    .dropdown-header{padding:12px 16px;font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;background:var(--card-hover);border-bottom:1px solid var(--border);position:sticky;top:0}
+    .dropdown-item{padding:14px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
+    .dropdown-item:last-child{border-bottom:none}
+    .dropdown-item:hover{background:rgba(99,102,241,.2)}
+    .dropdown-city{font-size:15px;font-weight:600;margin-bottom:2px}
+    .dropdown-country{font-size:12px;color:var(--text-dim)}
+    .city-badge{margin-top:12px;padding:12px 16px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:10px;color:#4ade80;font-size:14px;font-weight:600;display:none}
+    .city-badge.show{display:block}
+    .form-error{padding:12px 16px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;color:#fca5a5;font-size:14px;margin-bottom:20px;display:none}
+    .form-error.show{display:block}
+    .confirm-btns{display:flex;gap:12px;margin-top:24px}
+    .confirm-btns .btn{flex:1}
+    #toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);padding:14px 24px;background:var(--success);color:#fff;font-weight:600;border-radius:50px;z-index:9999;opacity:0;transition:.3s;pointer-events:none}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    @keyframes pinDrop{0%{transform:scale(0) translateY(-20px);opacity:0}60%{transform:scale(1.3) translateY(0);opacity:1}100%{transform:scale(1) translateY(0);opacity:1}}
+    @keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+    @keyframes confettiPop{0%{transform:scale(0);opacity:1}50%{opacity:1}100%{transform:scale(1) translate(var(--tx),var(--ty));opacity:0}}
+    .pin-dropping .map-pin{animation:pinDrop .5s cubic-bezier(.34,1.56,.64,1) forwards}
+    #join-cta{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:16px;padding:16px 28px;background:rgba(24,24,27,.92);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:100px;z-index:200;animation:slideUp .5s ease-out;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+    #join-cta.hidden{display:none}
+    .cta-text{font-size:15px;font-weight:600;color:var(--text)}
+    .cta-text strong{color:var(--accent-hover)}
+    .cta-btn{padding:12px 24px;background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;border:none;border-radius:50px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:.2s;white-space:nowrap}
+    .cta-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,.5)}
+    #post-drop{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);padding:24px 32px;background:rgba(24,24,27,.95);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:20px;z-index:200;text-align:center;animation:slideUp .5s ease-out;box-shadow:0 12px 40px rgba(0,0,0,.5);display:none}
+    #post-drop.show{display:block}
+    .post-drop-title{font-size:20px;font-weight:800;margin-bottom:4px}
+    .post-drop-desc{color:var(--text-muted);font-size:14px;margin-bottom:20px}
+    .post-drop-actions{display:flex;gap:12px}
+    .post-drop-actions .btn{font-size:14px;padding:12px 20px}
+    .confetti{position:fixed;pointer-events:none;z-index:9998}
+    .confetti-dot{position:absolute;width:8px;height:8px;border-radius:50%;animation:confettiPop .8s ease-out forwards}
+    @media(max-width:768px){#header{height:56px;padding:0 16px}#map{top:56px}.logo span:not(.logo-emoji){display:none}.share-btn .code{display:none}#sidebar{top:72px;left:12px;width:170px;max-height:calc(100vh-140px)}#detail{left:12px;right:12px;bottom:80px;width:auto}#stats{left:12px;bottom:16px;padding:10px 16px;font-size:12px}.welcome-card{padding:32px 24px}.modal{padding:24px}.share-code{font-size:28px;letter-spacing:6px}#join-cta{bottom:20px;padding:14px 20px;gap:12px;flex-direction:column;border-radius:20px;left:16px;right:16px;transform:none}.cta-text{font-size:14px}#post-drop{bottom:20px;left:16px;right:16px;transform:none}.post-drop-actions{flex-direction:column}}
+    @media(max-width:480px){#sidebar{display:none}}
+  </style>
+</head>
+<body>
+<div id="loading"><div class="loading-globe">🌍</div><div class="loading-spinner"></div></div>
+<div id="welcome" class="hidden">
+  <div class="welcome-card">
+    <span class="welcome-globe">🌍</span>
+    <h1 class="welcome-title">Friend Atlas</h1>
+    <p class="welcome-desc">Map your friendships across the world. Create your atlas, share it, and let friends drop their pin!</p>
+    <div id="auth-section" style="display:none">
+      <div class="user-badge" id="user-badge"></div>
+      <span class="section-label">Create Your Atlas</span>
+      <button class="btn btn-primary btn-full" id="create-btn">Create My Atlas</button>
+      <div class="divider"><div class="divider-line"></div><span class="divider-text">or join a friend's</span><div class="divider-line"></div></div>
+      <div class="join-row">
+        <input type="text" class="input centered code" id="join-code" placeholder="CODE" maxlength="6" autocomplete="off">
+        <button class="btn btn-secondary" id="join-btn">Join</button>
+      </div>
+      <a href="/auth/logout" class="sign-out">Sign out</a>
+    </div>
+    <div id="guest-section">
+      <a href="/auth/login" class="btn btn-primary btn-full">Sign In to Get Started</a>
+      <p style="margin-top:16px;font-size:14px;color:var(--text-dim)">Sign in to create your atlas or add yourself to a friend's map.</p>
+    </div>
+    <div class="error-msg" id="welcome-error"></div>
+  </div>
+</div>
+<header id="header">
+  <div class="header-left"><div class="logo"><span class="logo-emoji">🌍</span><span id="atlas-title">Friend Atlas</span></div></div>
+  <div class="header-right">
+    <button class="header-btn share-btn" id="share-btn">Share: <span class="code" id="header-code">------</span></button>
+    <button class="header-btn add-btn" id="add-btn">+ Add Yourself</button>
+    <button class="header-btn user-btn" id="user-btn"><span class="user-btn-inner" id="user-btn-inner"></span></button>
+  </div>
+</header>
+<div id="user-menu">
+  <button class="menu-item" id="menu-switch">🔄 Switch Atlas</button>
+  <button class="menu-item" id="menu-export">💾 Export Data</button>
+  <a href="/auth/logout" class="menu-item danger">Sign Out</a>
+</div>
+<div id="map"></div>
+<div id="stats"><div class="stat"><span class="stat-val" id="stat-friends">0</span><span class="stat-label">friends</span></div><div class="stat"><span class="stat-val" id="stat-cities">0</span><span class="stat-label">cities</span></div><div class="stat"><span class="stat-val" id="stat-countries">0</span><span class="stat-label">countries</span></div></div>
+<div id="empty"><div class="empty-icon">📍</div><h2 class="empty-title">No pins yet</h2><p class="empty-desc">Share your atlas code and let friends add themselves!</p><button class="btn btn-primary" id="empty-share-btn">Share My Atlas</button></div>
+<div id="join-cta" class="hidden"><span class="cta-text">Drop your pin on <strong id="cta-owner"></strong>'s map</span><button class="cta-btn" id="cta-btn">Add Yourself 📍</button></div>
+<div id="post-drop"><div class="post-drop-title">You're on the map! 🎉</div><div class="post-drop-desc">Your friends can see where you are now</div><div class="post-drop-actions"><button class="btn btn-primary" id="post-share-btn">Share with a friend</button><button class="btn btn-secondary" id="post-create-btn">Create your own atlas</button></div></div>
+<div id="sidebar"></div>
+<div id="detail"><button class="detail-close" id="detail-close">×</button><div class="detail-avatar" id="detail-avatar"></div><div class="detail-name" id="detail-name"></div><div class="detail-city" id="detail-city"></div><div class="detail-note" id="detail-note"></div><div class="detail-meta" id="detail-meta"></div><button class="detail-remove" id="detail-remove">Remove from map</button></div>
+<div class="modal-overlay" id="share-modal"><div class="modal"><button class="modal-close" id="share-close">×</button><div class="modal-icon">🔗</div><h2 class="modal-title">Share Your Atlas</h2><p class="modal-desc">Friends can join using this link & code</p><div class="share-code" id="share-code">------</div><button class="btn btn-primary btn-full" id="copy-btn">📋 Copy Share Text</button><div class="share-preview"><div class="share-preview-label">Preview</div><div class="share-preview-text" id="share-text"></div></div></div></div>
+<div class="modal-overlay" id="add-modal"><div class="modal"><button class="modal-close" id="add-close">×</button><h2 class="modal-title">Drop Your Pin</h2><p class="modal-desc" id="add-subtitle">Add yourself to the map</p><div class="form-error" id="add-error"></div><div class="form-group"><label class="form-label">Your Name</label><input type="text" class="input" id="add-name" placeholder="What should we call you?"></div><div class="form-group"><label class="form-label">City</label><div class="city-wrap"><input type="text" class="input" id="add-city" placeholder="Start typing..." autocomplete="off"><div id="city-dropdown"></div></div><div class="city-badge" id="city-badge"></div></div><div class="form-group"><label class="form-label">Note <span class="opt">(optional)</span></label><input type="text" class="input" id="add-note" placeholder="e.g. Always down for coffee ☕"></div><button class="btn btn-primary btn-full" id="add-submit">Drop My Pin 📍</button></div></div>
+<div class="modal-overlay" id="confirm-modal"><div class="modal" style="max-width:360px;text-align:center"><div class="modal-icon">🗑️</div><p style="font-size:17px">Remove <strong id="confirm-name"></strong> from the map?</p><div class="confirm-btns"><button class="btn btn-secondary" id="confirm-cancel">Cancel</button><button class="btn btn-danger" id="confirm-yes">Remove</button></div></div></div>
+<div id="toast"></div>
+<script>
+const CITIES=[["New York City","USA",40.7128,-74.006],["Los Angeles","USA",34.0522,-118.2437],["Chicago","USA",41.8781,-87.6298],["Houston","USA",29.7604,-95.3698],["Phoenix","USA",33.4484,-112.074],["Philadelphia","USA",39.9526,-75.1652],["San Antonio","USA",29.4241,-98.4936],["San Diego","USA",32.7157,-117.1611],["Dallas","USA",32.7767,-96.797],["San Francisco","USA",37.7749,-122.4194],["Austin","USA",30.2672,-97.7431],["Seattle","USA",47.6062,-122.3321],["Denver","USA",39.7392,-104.9903],["Washington DC","USA",38.9072,-77.0369],["Boston","USA",42.3601,-71.0589],["Nashville","USA",36.1627,-86.7816],["Portland","USA",45.5152,-122.6784],["Las Vegas","USA",36.1699,-115.1398],["Atlanta","USA",33.749,-84.388],["Miami","USA",25.7617,-80.1918],["New Orleans","USA",29.9511,-90.0715],["Honolulu","USA",21.3069,-157.8583],["Toronto","Canada",43.6532,-79.3832],["Montreal","Canada",45.5017,-73.5673],["Vancouver","Canada",49.2827,-123.1207],["Mexico City","Mexico",19.4326,-99.1332],["Cancun","Mexico",21.1619,-86.8515],["London","UK",51.5074,-0.1278],["Manchester","UK",53.4808,-2.2426],["Edinburgh","UK",55.9533,-3.1883],["Dublin","Ireland",53.3498,-6.2603],["Paris","France",48.8566,2.3522],["Lyon","France",45.764,4.8357],["Berlin","Germany",52.52,13.405],["Munich","Germany",48.1351,11.582],["Amsterdam","Netherlands",52.3676,4.9041],["Brussels","Belgium",50.8503,4.3517],["Madrid","Spain",40.4168,-3.7038],["Barcelona","Spain",41.3851,2.1734],["Lisbon","Portugal",38.7223,-9.1393],["Rome","Italy",41.9028,12.4964],["Milan","Italy",45.4642,9.19],["Florence","Italy",43.7696,11.2558],["Vienna","Austria",48.2082,16.3738],["Zurich","Switzerland",47.3769,8.5417],["Prague","Czech Republic",50.0755,14.4378],["Budapest","Hungary",47.4979,19.0402],["Copenhagen","Denmark",55.6761,12.5683],["Stockholm","Sweden",59.3293,18.0686],["Oslo","Norway",59.9139,10.7522],["Helsinki","Finland",60.1699,24.9384],["Istanbul","Turkey",41.0082,28.9784],["Athens","Greece",37.9838,23.7275],["Dubai","UAE",25.2048,55.2708],["Tel Aviv","Israel",32.0853,34.7818],["Tokyo","Japan",35.6762,139.6503],["Osaka","Japan",34.6937,135.5023],["Seoul","South Korea",37.5665,126.978],["Beijing","China",39.9042,116.4074],["Shanghai","China",31.2304,121.4737],["Hong Kong","China",22.3193,114.1694],["Taipei","Taiwan",25.033,121.5654],["Singapore","Singapore",1.3521,103.8198],["Bangkok","Thailand",13.7563,100.5018],["Kuala Lumpur","Malaysia",3.139,101.6869],["Jakarta","Indonesia",-6.2088,106.8456],["Bali","Indonesia",-8.4095,115.1889],["Ho Chi Minh City","Vietnam",10.8231,106.6297],["Mumbai","India",19.076,72.8777],["Delhi","India",28.7041,77.1025],["Sydney","Australia",-33.8688,151.2093],["Melbourne","Australia",-37.8136,144.9631],["Auckland","New Zealand",-36.8509,174.7645],["Cape Town","South Africa",-33.9249,18.4241],["Cairo","Egypt",30.0444,31.2357],["Lagos","Nigeria",6.5244,3.3792],["Sao Paulo","Brazil",-23.5505,-46.6333],["Rio de Janeiro","Brazil",-22.9068,-43.1729],["Buenos Aires","Argentina",-34.6037,-58.3816],["Lima","Peru",-12.0464,-77.0428],["Bogota","Colombia",4.711,-74.0721],["Medellin","Colombia",6.2442,-75.5812]].map(([n,c,lat,lng])=>({name:n,country:c,lat,lng}));
+const ALIASES={nyc:'new york',ny:'new york',la:'los angeles',sf:'san francisco',dc:'washington',philly:'philadelphia',vegas:'las vegas',nola:'new orleans',atl:'atlanta',chi:'chicago',bkk:'bangkok',hk:'hong kong',sg:'singapore',ldn:'london',ams:'amsterdam'};
+function searchCities(q){if(!q||q.length<1)return[];q=ALIASES[q.toLowerCase().trim()]||q.toLowerCase().trim();return CITIES.map(c=>{const n=c.name.toLowerCase(),co=c.country.toLowerCase();let s=0;if(n===q)s=1000;else if(n.startsWith(q))s=500;else if(n.includes(q))s=300;else if(co.startsWith(q))s=200;else if(co.includes(q))s=100;return s>0?{...c,score:s}:null}).filter(Boolean).sort((a,b)=>b.score-a.score).slice(0,8)}
+let user=null,atlas=null,friends=[],stats={totalFriends:0,cities:0,countries:0},selected=null,selectedCity=null,toRemove=null,map=null,markers=[];
+const COLORS=['#6366f1','#8b5cf6','#ec4899','#f43f5e','#f97316','#eab308','#22c55e','#14b8a6','#06b6d4','#3b82f6'];
+const $=id=>document.getElementById(id);
+const getColor=n=>{let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return COLORS[Math.abs(h)%COLORS.length]};
+const getInitials=n=>n.split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
+const formatDate=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+const toast=m=>{const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)};
+const api=async(url,opts={})=>(await fetch(url,{...opts,headers:{'Content-Type':'application/json',...opts.headers}})).json();
+function getGroups(){const g={};friends.forEach(f=>{const k=`${f.lat.toFixed(1)},${f.lng.toFixed(1)}`;(g[k]=g[k]||[]).push(f)});return g}
+function getPos(f,i,t){if(t<=1)return{lat:f.lat,lng:f.lng};const r=.5+t*.1,a=(2*Math.PI*i)/t-Math.PI/2;return{lat:f.lat+r*Math.cos(a),lng:f.lng+r*Math.sin(a)}}
+function render(){if(!atlas)return;$('atlas-title').textContent=atlas.ownerName?`${atlas.ownerName}'s Atlas`:'Friend Atlas';$('header-code').textContent=atlas.code;$('stat-friends').textContent=stats.totalFriends;$('stat-cities').textContent=stats.cities;$('stat-countries').textContent=stats.countries;$('empty').classList.toggle('show',friends.length===0);$('sidebar').innerHTML=friends.map(f=>`<div class="friend-item ${selected?.id===f.id?'selected':''}" data-id="${f.id}"><div class="friend-avatar" style="background:${f.profilePicture?'transparent':getColor(f.name)}">${f.profilePicture?`<img src="${f.profilePicture}">`:getInitials(f.name)}</div><div class="friend-info"><div class="friend-name">${f.name}</div><div class="friend-city">${f.city}</div></div></div>`).join('');$('sidebar').querySelectorAll('.friend-item').forEach(el=>el.onclick=()=>select(friends.find(f=>f.id==el.dataset.id)));renderMarkers()}
+function renderMarkers(){if(!map)return;markers.forEach(m=>map.removeLayer(m));markers=[];const groups=getGroups();Object.values(groups).forEach(g=>g.forEach((f,i)=>{const sel=selected?.id===f.id,pos=getPos(f,i,g.length),sz=sel?48:42;const icon=L.divIcon({className:'',html:`<div class="map-pin ${sel?'selected':''}" style="width:${sz}px;height:${sz}px;background:${f.profilePicture?'transparent':getColor(f.name)};font-size:${sel?'16px':'14px'}">${f.profilePicture?`<img src="${f.profilePicture}">`:getInitials(f.name)}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});const m=L.marker([pos.lat,pos.lng],{icon}).addTo(map);m.on('click',()=>select(f));markers.push(m)}))}
+function select(f){selected=f;if(f){$('detail-avatar').innerHTML=f.profilePicture?`<img src="${f.profilePicture}">`:getInitials(f.name);$('detail-avatar').style.background=f.profilePicture?'transparent':getColor(f.name);$('detail-name').textContent=f.name;$('detail-city').textContent='📍 '+f.city;$('detail-note').textContent=f.note?`"${f.note}"`:'';$('detail-note').style.display=f.note?'block':'none';$('detail-meta').textContent='Added '+formatDate(f.createdAt);$('detail-remove').classList.toggle('show',user&&atlas.ownerId===user.id);$('detail').classList.add('show');const groups=getGroups(),g=Object.values(groups).find(x=>x.some(y=>y.id===f.id)),i=g?.findIndex(x=>x.id===f.id)||0,pos=getPos(f,i,g?.length||1);map?.flyTo([pos.lat,pos.lng],5,{duration:.8})}else{$('detail').classList.remove('show')}render()}
+async function init(){map=L.map('map',{zoomControl:false}).setView([20,0],2);L.control.zoom({position:'bottomright'}).addTo(map);L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(map);const session=await api('/auth/session');user=session.user;if(user){$('user-btn-inner').innerHTML=user.profilePicture?`<img src="${user.profilePicture}">`:getInitials(user.name);api('/api/atlas/claim-anonymous',{method:'POST'}).catch(()=>{})}const params=new URLSearchParams(location.search);const pathMatch=location.pathname.match(/^\/join\/([A-Z0-9]{6})$/i);const code=pathMatch?pathMatch[1]:params.get('code');if(code)await loadAtlas(code);else showWelcome();$('loading').classList.add('hidden');setupEvents()}
+function showWelcome(){$('welcome').classList.remove('hidden');if(user){$('auth-section').style.display='block';$('guest-section').style.display='none';$('user-badge').innerHTML=`<div class="user-badge-avatar">${user.profilePicture?`<img src="${user.profilePicture}">`:getInitials(user.name)}</div><div class="user-badge-info"><div class="user-badge-name">${user.name}</div><div class="user-badge-email">${user.email}</div></div>`}else{$('auth-section').style.display='none';$('guest-section').style.display='block'}}
+async function loadAtlas(code){try{const data=await api(`/api/atlas/code/${code}`);if(data.error){toast('Atlas not found');showWelcome();return}atlas=data.atlas;friends=data.friends;stats=data.stats;$('welcome').classList.add('hidden');history.replaceState({},'',`/join/${code}`);render();showJoinCTA()}catch(e){toast('Failed to load');showWelcome()}}
+function showJoinCTA(){const hasPin=user?friends.some(f=>f.userId===user?.id):false;if(!hasPin&&atlas&&friends.length>=0){$('cta-owner').textContent=atlas.ownerName;$('join-cta').classList.remove('hidden')}else{$('join-cta').classList.add('hidden')}}
+function hideJoinCTA(){$('join-cta').classList.add('hidden')}
+function showConfetti(){const colors=['#6366f1','#8b5cf6','#ec4899','#22c55e','#eab308','#06b6d4'];const container=document.createElement('div');container.className='confetti';container.style.cssText='left:50%;top:50%;';document.body.appendChild(container);for(let i=0;i<20;i++){const dot=document.createElement('div');dot.className='confetti-dot';const angle=Math.random()*Math.PI*2;const dist=60+Math.random()*80;dot.style.cssText=`background:${colors[i%colors.length]};--tx:${Math.cos(angle)*dist}px;--ty:${Math.sin(angle)*dist}px;left:${-4}px;top:${-4}px;animation-delay:${Math.random()*.2}s`;container.appendChild(dot)}setTimeout(()=>container.remove(),1200)}
+async function shareAtlas(){const url=`${location.origin}/join/${atlas.code}`;const text=`📍 Drop your pin on my Friend Atlas!\n\n🔗 ${url}\n📝 Code: ${atlas.code}\n\nLet me know where you're based!`;if(navigator.share){try{await navigator.share({title:'Friend Atlas',text,url});return}catch(e){if(e.name==='AbortError')return}}navigator.clipboard.writeText(text);toast('Link copied! ✓')}
+function setupEvents(){$('create-btn').onclick=async()=>{if(!user){location.href='/auth/login?return=/';return}const d=await api('/api/atlas/create',{method:'POST',body:JSON.stringify({})});if(d.success){await loadAtlas(d.atlas.code);toast('Atlas created! 🎉')}};$('join-btn').onclick=async()=>{const code=$('join-code').value.toUpperCase().trim();if(code.length!==6){$('welcome-error').textContent='Enter a 6-character code';$('welcome-error').classList.add('show');return}await loadAtlas(code)};$('join-code').oninput=e=>e.target.value=e.target.value.toUpperCase();const openShare=()=>{$('share-code').textContent=atlas.code;const url=`${location.origin}/join/${atlas.code}`;$('share-text').textContent=`📍 Drop your pin on my Friend Atlas!\n\n🔗 ${url}\n📝 Code: ${atlas.code}\n\nLet me know where you're based!`;$('share-modal').classList.add('show')};$('share-btn').onclick=openShare;$('empty-share-btn').onclick=openShare;$('share-close').onclick=()=>$('share-modal').classList.remove('show');$('share-modal').onclick=e=>{if(e.target.id==='share-modal')$('share-modal').classList.remove('show')};$('copy-btn').onclick=()=>shareAtlas();const openAdd=()=>{$('add-subtitle').textContent=atlas.ownerName?`on ${atlas.ownerName}'s atlas`:'Add yourself';$('add-name').value=user?user.name:'';$('add-city').value='';$('add-note').value='';$('city-dropdown').classList.remove('show');$('city-badge').classList.remove('show');$('add-error').classList.remove('show');selectedCity=null;$('add-modal').classList.add('show');hideJoinCTA()};$('add-btn').onclick=openAdd;$('cta-btn').onclick=openAdd;$('add-close').onclick=()=>{$('add-modal').classList.remove('show');showJoinCTA()};$('add-modal').onclick=e=>{if(e.target.id==='add-modal'){$('add-modal').classList.remove('show');showJoinCTA()}};const cityInput=$('add-city'),dropdown=$('city-dropdown');cityInput.oninput=function(){selectedCity=null;$('city-badge').classList.remove('show');const results=searchCities(this.value);if(!results.length){dropdown.classList.remove('show');return}dropdown.innerHTML='<div class="dropdown-header">Select a city</div>'+results.map((c,i)=>`<div class="dropdown-item" data-i="${i}"><div class="dropdown-city">${c.name}</div><div class="dropdown-country">${c.country}</div></div>`).join('');dropdown.classList.add('show');dropdown.querySelectorAll('.dropdown-item').forEach(el=>el.onclick=()=>{const c=results[el.dataset.i];selectedCity=c;cityInput.value=`${c.name}, ${c.country}`;$('city-badge').textContent=`✓ ${c.name}, ${c.country}`;$('city-badge').classList.add('show');dropdown.classList.remove('show');map.flyTo([c.lat,c.lng],5,{duration:.8})})};document.addEventListener('click',e=>{if(!e.target.closest('.city-wrap'))dropdown.classList.remove('show')});$('add-submit').onclick=async()=>{const name=$('add-name').value.trim(),note=$('add-note').value.trim();if(!name){$('add-error').textContent='Enter your name';$('add-error').classList.add('show');return}if(!selectedCity){$('add-error').textContent='Select a city';$('add-error').classList.add('show');return}const body=JSON.stringify({name,city:`${selectedCity.name}, ${selectedCity.country}`,country:selectedCity.country,lat:selectedCity.lat,lng:selectedCity.lng,note});const endpoint=user?`/api/atlas/code/${atlas.code}/join`:`/api/atlas/code/${atlas.code}/join-anon`;const d=await api(endpoint,{method:'POST',body});if(d.success){$('add-modal').classList.remove('show');hideJoinCTA();document.querySelectorAll('.map-pin').forEach(p=>p.classList.add('pin-dropping'));await loadAtlas(atlas.code);hideJoinCTA();showConfetti();toast('Pin dropped! 📍');setTimeout(()=>{$('post-drop').classList.add('show')},1500)}else{$('add-error').textContent=d.error||'Failed';$('add-error').classList.add('show')}};$('post-share-btn').onclick=()=>{$('post-drop').classList.remove('show');shareAtlas()};$('post-create-btn').onclick=()=>{$('post-drop').classList.remove('show');if(user){api('/api/atlas/create',{method:'POST',body:JSON.stringify({})}).then(d=>{if(d.success)loadAtlas(d.atlas.code).then(()=>toast('Atlas created! 🎉'))})}else{showWelcome()}};document.addEventListener('click',e=>{if($('post-drop').classList.contains('show')&&!e.target.closest('#post-drop'))$('post-drop').classList.remove('show')});$('detail-close').onclick=()=>select(null);$('detail-remove').onclick=()=>{toRemove=selected;$('confirm-name').textContent=selected.name;$('confirm-modal').classList.add('show')};$('confirm-cancel').onclick=()=>$('confirm-modal').classList.remove('show');$('confirm-modal').onclick=e=>{if(e.target.id==='confirm-modal')$('confirm-modal').classList.remove('show')};$('confirm-yes').onclick=async()=>{const d=await api(`/api/atlas/${atlas.id}/friend/${toRemove.id}`,{method:'DELETE'});if(d.success){$('confirm-modal').classList.remove('show');select(null);await loadAtlas(atlas.code);toast('Removed')}};$('user-btn').onclick=()=>$('user-menu').classList.toggle('show');document.addEventListener('click',e=>{if(!e.target.closest('#user-btn')&&!e.target.closest('#user-menu'))$('user-menu').classList.remove('show')});$('menu-switch').onclick=()=>{$('user-menu').classList.remove('show');hideJoinCTA();$('post-drop').classList.remove('show');showWelcome()};$('menu-export').onclick=async()=>{$('user-menu').classList.remove('show');const d=await api(`/api/atlas/${atlas.id}/export`);if(d.atlas){const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`friend-atlas-${atlas.code}.json`;a.click();URL.revokeObjectURL(url);toast('Exported! 📁')}}}
+init();
+</script>
+</body>
+</html>
