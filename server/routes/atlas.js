@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const { body, param, validationResult } = require('express-validator');
 const router = express.Router();
 const db = require('../db');
-const { requireAuth } = require('../middleware/auth');
+// No auth required — all operations use anonymous sessions
 
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -18,9 +18,12 @@ const validate = (req, res, next) => {
   next();
 };
 
-router.post('/create', requireAuth, async (req, res) => {
+router.post('/create',
+  body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('Name is required'),
+  validate,
+  async (req, res) => {
   try {
-    const ownerName = req.body.name || req.session.user.name;
+    const ownerName = req.body.name || (req.session.user && req.session.user.name) || 'Anonymous';
     let code, attempts = 0;
     do {
       code = generateCode();
@@ -29,7 +32,26 @@ router.post('/create', requireAuth, async (req, res) => {
       attempts++;
     } while (attempts < 10);
     if (attempts >= 10) return res.status(500).json({ error: 'Could not generate unique code' });
-    const atlas = await db.createAtlas(code, req.session.user.id, ownerName);
+
+    // Use session user ID if authenticated, otherwise generate an anonymous owner ID
+    let ownerId = req.session.user?.id;
+    if (!ownerId) {
+      let sessionId = req.cookies?.anon_session;
+      if (!sessionId) {
+        sessionId = crypto.randomBytes(32).toString('hex');
+        res.cookie('anon_session', sessionId, {
+          maxAge: 365 * 24 * 60 * 60 * 1000,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        });
+      }
+      ownerId = `anon_${sessionId.slice(0, 16)}`;
+      // Ensure anonymous user exists in users table
+      await db.findOrCreateUser({ id: ownerId, email: `${ownerId}@anon.local`, name: ownerName, profilePicture: null });
+    }
+
+    const atlas = await db.createAtlas(code, ownerId, ownerName);
     res.json({ success: true, atlas: { id: atlas.id, code: atlas.code, ownerName: atlas.owner_name, createdAt: atlas.created_at } });
   } catch (error) {
     console.error('Create atlas error:', error);
@@ -102,60 +124,18 @@ router.get('/code/:code/og-image', param('code').isString().isLength({ min: 6, m
   }
 });
 
-router.get('/my-atlases', requireAuth, async (req, res) => {
+router.get('/:id/export', param('id').isInt(), validate, async (req, res) => {
   try {
-    const atlases = await db.getAtlasesByOwner(req.session.user.id);
-    res.json({ atlases: atlases.map(a => ({ id: a.id, code: a.code, ownerName: a.owner_name, friendCount: parseInt(a.friend_count), createdAt: a.created_at })) });
-  } catch (error) {
-    console.error('Get my atlases error:', error);
-    res.status(500).json({ error: 'Failed to get atlases' });
-  }
-});
-
-router.delete('/:id', requireAuth, param('id').isInt(), validate, async (req, res) => {
-  try {
-    const deleted = await db.deleteAtlas(req.params.id, req.session.user.id);
-    if (!deleted) return res.status(404).json({ error: 'Atlas not found or unauthorized' });
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Delete atlas error:', error);
-    res.status(500).json({ error: 'Failed to delete atlas' });
-  }
-});
-
-router.get('/:id/export', requireAuth, param('id').isInt(), validate, async (req, res) => {
-  try {
-    const data = await db.exportAtlas(req.params.id, req.session.user.id);
-    if (!data) return res.status(404).json({ error: 'Atlas not found or unauthorized' });
-    res.json(data);
+    // Export is public for now (no auth)
+    const atlas = await db.pool.query('SELECT * FROM atlases WHERE id = $1', [req.params.id]);
+    if (!atlas.rows[0]) return res.status(404).json({ error: 'Atlas not found' });
+    const friends = await db.getFriendsByAtlas(req.params.id);
+    res.json({ atlas: atlas.rows[0], friends, exportedAt: new Date().toISOString() });
   } catch (error) {
     console.error('Export atlas error:', error);
     res.status(500).json({ error: 'Failed to export atlas' });
   }
 });
-
-router.post('/code/:code/join', requireAuth,
-  param('code').isString().isLength({ min: 6, max: 6 }).toUpperCase(),
-  body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('Name is required (max 100 chars)'),
-  body('city').isString().trim().isLength({ min: 1, max: 255 }).withMessage('City is required'),
-  body('country').optional().isString().trim().isLength({ max: 100 }),
-  body('lat').isFloat({ min: -90, max: 90 }).withMessage('Invalid latitude'),
-  body('lng').isFloat({ min: -180, max: 180 }).withMessage('Invalid longitude'),
-  body('note').optional().isString().trim().isLength({ max: 500 }),
-  validate,
-  async (req, res) => {
-    try {
-      const { name, city, country, lat, lng, note } = req.body;
-      const atlas = await db.getAtlasByCode(req.params.code);
-      if (!atlas) return res.status(404).json({ error: 'Atlas not found' });
-      const friend = await db.addOrUpdateFriend(atlas.id, req.session.user.id, name, city, country || null, lat, lng, note);
-      res.json({ success: true, friend: { id: friend.id, name: friend.name, city: friend.city, country: friend.country, lat: parseFloat(friend.lat), lng: parseFloat(friend.lng), note: friend.note, createdAt: friend.created_at } });
-    } catch (error) {
-      console.error('Join atlas error:', error);
-      res.status(500).json({ error: 'Failed to join atlas' });
-    }
-  }
-);
 
 // Anonymous join — no auth required, tracks by session cookie
 router.post('/code/:code/join-anon',
@@ -205,50 +185,8 @@ router.post('/code/:code/join-anon',
   }
 );
 
-// Claim anonymous pins after signing in
-router.post('/claim-anonymous', requireAuth, async (req, res) => {
-  try {
-    const sessionId = req.cookies?.anon_session;
-    if (!sessionId) return res.json({ success: true, claimed: 0 });
-    const claimed = await db.claimAnonymousFriends(sessionId, req.session.user.id);
-    // Clear the anon cookie since pins are now claimed
-    res.clearCookie('anon_session');
-    res.json({ success: true, claimed: claimed.length });
-  } catch (error) {
-    console.error('Claim error:', error);
-    res.status(500).json({ error: 'Failed to claim pins' });
-  }
-});
-
-// Get atlases user has joined (not owns)
-router.get('/my-memberships', requireAuth, async (req, res) => {
-  try {
-    const memberships = await db.getMembershipsByUser(req.session.user.id);
-    res.json({
-      memberships: memberships.map(a => ({
-        id: a.id, code: a.code, ownerName: a.owner_name,
-        friendCount: parseInt(a.friend_count), createdAt: a.created_at,
-      })),
-    });
-  } catch (error) {
-    console.error('Get memberships error:', error);
-    res.status(500).json({ error: 'Failed to get memberships' });
-  }
-});
-
-router.delete('/:atlasId/friend/:friendId', requireAuth, param('atlasId').isInt(), param('friendId').isInt(), validate, async (req, res) => {
-  try {
-    const deleted = await db.removeFriend(req.params.friendId, req.session.user.id);
-    if (!deleted) return res.status(404).json({ error: 'Friend not found or unauthorized' });
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Remove friend error:', error);
-    res.status(500).json({ error: 'Failed to remove friend' });
-  }
-});
-
-// Anonymous user removing their own pin
-router.delete('/:atlasId/friend/:friendId/anon', param('atlasId').isInt(), param('friendId').isInt(), validate, async (req, res) => {
+// Remove a friend pin (by anon session)
+router.delete('/:atlasId/friend/:friendId', param('atlasId').isInt(), param('friendId').isInt(), validate, async (req, res) => {
   try {
     const sessionId = req.cookies?.anon_session;
     if (!sessionId) return res.status(401).json({ error: 'No session' });
@@ -256,7 +194,7 @@ router.delete('/:atlasId/friend/:friendId/anon', param('atlasId').isInt(), param
     if (!deleted) return res.status(404).json({ error: 'Friend not found or unauthorized' });
     res.json({ success: true });
   } catch (error) {
-    console.error('Anon remove friend error:', error);
+    console.error('Remove friend error:', error);
     res.status(500).json({ error: 'Failed to remove friend' });
   }
 });

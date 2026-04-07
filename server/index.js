@@ -8,18 +8,12 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
-const { WorkOS } = require('@workos-inc/node');
-
 const db = require('./db');
-const authRoutes = require('./routes/auth');
 const atlasRoutes = require('./routes/atlas');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
-
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
-app.set('workos', workos);
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -77,8 +71,15 @@ app.use(express.static(path.join(__dirname, '../public'), {
   etag: true,
 }));
 
-app.use('/auth', authRoutes);
 app.use('/api/atlas', atlasRoutes);
+
+// Simple session-based auth endpoints (no WorkOS needed)
+app.get('/auth/session', (req, res) => {
+  res.json({ authenticated: !!req.cookies?.anon_session, user: null });
+});
+app.get('/auth/logout', (req, res) => {
+  req.session.destroy(() => res.redirect('/'));
+});
 
 app.get('/health', async (req, res) => {
   try {

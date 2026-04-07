@@ -11,12 +11,6 @@ services:
         fromDatabase:
           name: friend-atlas-db
           property: connectionString
-      - key: WORKOS_API_KEY
-        sync: false
-      - key: WORKOS_CLIENT_ID
-        sync: false
-      - key: WORKOS_REDIRECT_URI
-        sync: false
       - key: SESSION_SECRET
         generateValue: true
       - key: APP_URL
