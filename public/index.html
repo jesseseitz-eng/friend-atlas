@@ -540,7 +540,15 @@ function setupEvents(){
     if(!name){$('welcome-error').textContent='Enter your name';$('welcome-error').classList.add('show');return}
     $('welcome-error').classList.remove('show');
     const d=await api('/api/atlas/create',{method:'POST',body:JSON.stringify({name})});
-    if(d.success){await loadAtlas(d.atlas.code);toast('Atlas created!')}
+    if(d.success){await loadAtlas(d.atlas.code);toast('Atlas created!');
+      // Immediately prompt creator to drop their pin
+      $('add-subtitle').textContent='You\'re the first pin!';
+      $('add-name').value=name;$('add-city').value='';$('add-note').value='';
+      $('city-dropdown').classList.remove('show');$('city-badge').classList.remove('show');$('add-error').classList.remove('show');
+      selectedCity=null;selectedColor=PIN_COLORS[Math.floor(Math.random()*PIN_COLORS.length)];
+      picker.querySelectorAll('.color-swatch').forEach(s=>{s.classList.toggle('active',s.dataset.color===selectedColor)});
+      $('add-modal').classList.add('show');hideJoinCTA();
+    }
   };
 
   // Join from welcome
