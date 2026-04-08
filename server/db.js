@@ -61,6 +61,12 @@ async function initialize() {
         ALTER TABLE friends ADD COLUMN IF NOT EXISTS color VARCHAR(7);
       EXCEPTION WHEN others THEN NULL;
       END $$;
+
+      -- Add referred_by column for invite attribution
+      DO $$ BEGIN
+        ALTER TABLE friends ADD COLUMN IF NOT EXISTS referred_by VARCHAR(100);
+      EXCEPTION WHEN others THEN NULL;
+      END $$;
     `);
   } finally {
     client.release();
@@ -156,7 +162,7 @@ async function exportAtlas(atlasId, ownerId) {
   return { atlas: atlas.rows[0], friends, exportedAt: new Date().toISOString() };
 }
 
-async function addAnonymousFriend(atlasId, sessionId, name, city, country, lat, lng, note, color) {
+async function addAnonymousFriend(atlasId, sessionId, name, city, country, lat, lng, note, color, referredBy) {
   // Check if this session already has a pin on this atlas
   const existing = await pool.query(
     'SELECT id FROM friends WHERE atlas_id = $1 AND session_id = $2',
@@ -172,9 +178,9 @@ async function addAnonymousFriend(atlasId, sessionId, name, city, country, lat, 
     return result.rows[0];
   }
   const result = await pool.query(
-    `INSERT INTO friends (atlas_id, user_id, session_id, name, city, country, lat, lng, note, color)
-     VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-    [atlasId, sessionId, name, city, country, lat, lng, note || null, color || null]
+    `INSERT INTO friends (atlas_id, user_id, session_id, name, city, country, lat, lng, note, color, referred_by)
+     VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+    [atlasId, sessionId, name, city, country, lat, lng, note || null, color || null, referredBy || null]
   );
   return result.rows[0];
 }

@@ -185,8 +185,17 @@
     .share-link{margin-bottom:20px}
     .share-link-box{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;color:var(--text2);word-break:break-all}
     .share-link-box .url{flex:1;overflow:hidden;text-overflow:ellipsis}
-    .share-actions{display:flex;gap:8px}
+    .share-proof{text-align:center;margin-bottom:20px;font-size:13px;color:var(--text2)}
+    .share-proof strong{color:var(--accent2)}
+    .share-actions{display:flex;gap:8px;margin-bottom:12px}
     .share-actions .btn{flex:1;font-size:14px;padding:12px}
+    .share-channels{display:flex;gap:8px}
+    .share-ch{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text2);transition:all .2s;text-decoration:none}
+    .share-ch:hover{border-color:var(--border-hover);color:var(--text);background:var(--surface3)}
+    .share-ch.sms{border-color:rgba(52,211,153,.2);color:var(--success)}
+    .share-ch.sms:hover{background:rgba(52,211,153,.06)}
+    .share-ch.wa{border-color:rgba(37,211,102,.2);color:#25d366}
+    .share-ch.wa:hover{background:rgba(37,211,102,.06)}
 
     /* City Dropdown */
     .city-wrap{position:relative}
@@ -219,7 +228,12 @@
     #post-drop{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:24px 32px;background:var(--glass);backdrop-filter:blur(24px);border:1px solid var(--glass-border);border-radius:var(--radius-lg);z-index:200;text-align:center;animation:slideUp .5s ease-out;box-shadow:0 8px 32px rgba(0,0,0,.4);display:none}
     #post-drop.show{display:block}
     .post-drop-title{font-size:18px;font-weight:800;margin-bottom:4px}
-    .post-drop-desc{color:var(--text2);font-size:13px;margin-bottom:20px}
+    .post-drop-desc{color:var(--text2);font-size:13px;margin-bottom:16px}
+    .post-drop-members{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:16px}
+    .post-drop-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;border:2px solid var(--surface);margin-left:-8px}
+    .post-drop-avatar:first-child{margin-left:0}
+    .post-drop-count{font-size:12px;color:var(--text2);margin-left:8px;font-weight:600}
+    .post-drop-invite{font-size:13px;color:var(--accent2);font-weight:600;margin-bottom:16px}
     .post-drop-actions{display:flex;gap:8px}
     .post-drop-actions .btn{font-size:13px;padding:10px 18px}
 
@@ -329,15 +343,17 @@
 </div>
 
 <div id="join-cta" class="hidden">
-  <span class="cta-text">Drop your pin on <strong id="cta-owner"></strong>'s map</span>
+  <span class="cta-text">Drop your pin on <strong id="cta-owner"></strong>'s map <span id="cta-count"></span></span>
   <button class="cta-btn" id="cta-btn">Add Yourself</button>
 </div>
 
 <div id="post-drop">
   <div class="post-drop-title">You're on the map! 🎉</div>
-  <div class="post-drop-desc">Your friends can see where you are</div>
+  <div class="post-drop-desc" id="post-drop-desc">Your friends can see where you are</div>
+  <div class="post-drop-members" id="post-drop-members"></div>
+  <div class="post-drop-invite" id="post-drop-invite"></div>
   <div class="post-drop-actions">
-    <button class="btn btn-primary" id="post-share-btn">Share with a friend</button>
+    <button class="btn btn-primary" id="post-share-btn">Invite a friend</button>
     <button class="btn btn-secondary" id="post-create-btn">Create your own</button>
   </div>
 </div>
@@ -360,11 +376,16 @@
     <div class="modal-icon">🔗</div>
     <h2 class="modal-title">Share Your Atlas</h2>
     <p class="modal-desc">Send this link to friends so they can drop their pin</p>
+    <div class="share-proof" id="share-proof"></div>
     <div class="share-code" id="share-code">------</div>
     <div class="share-link"><div class="share-link-box"><span class="url" id="share-url"></span></div></div>
     <div class="share-actions">
       <button class="btn btn-primary" id="copy-link-btn">Copy Link</button>
       <button class="btn btn-secondary" id="copy-text-btn">Copy Message</button>
+    </div>
+    <div class="share-channels">
+      <a class="share-ch sms" id="share-sms">💬 iMessage</a>
+      <a class="share-ch wa" id="share-wa">💬 WhatsApp</a>
     </div>
   </div>
 </div>
@@ -409,7 +430,7 @@ const ALIASES={nyc:'new york',ny:'new york',la:'los angeles',sf:'san francisco',
 
 function searchCities(q){if(!q||q.length<1)return[];q=ALIASES[q.toLowerCase().trim()]||q.toLowerCase().trim();return CITIES.map(c=>{const n=c.name.toLowerCase(),co=c.country.toLowerCase();let s=0;if(n===q)s=1000;else if(n.startsWith(q))s=500;else if(n.includes(q))s=300;else if(co.startsWith(q))s=200;else if(co.includes(q))s=100;return s>0?{...c,score:s}:null}).filter(Boolean).sort((a,b)=>b.score-a.score).slice(0,8)}
 
-let user=null,atlas=null,friends=[],stats={totalFriends:0,cities:0,countries:0},selected=null,selectedCity=null,toRemove=null,map=null,markers=[];
+let user=null,atlas=null,friends=[],stats={totalFriends:0,cities:0,countries:0},selected=null,selectedCity=null,toRemove=null,map=null,markers=[],referrer=null,myName=null;
 const PIN_COLORS=['#7c3aed','#3b82f6','#06b6d4','#22c55e','#eab308','#f97316','#f43f5e','#ec4899'];
 const COLORS=['#7c3aed','#8b5cf6','#ec4899','#f43f5e','#f97316','#eab308','#22c55e','#14b8a6','#06b6d4','#3b82f6'];
 let selectedColor=PIN_COLORS[0],lastDroppedId=null;
@@ -486,6 +507,7 @@ async function init(){
   const params=new URLSearchParams(location.search);
   const pathMatch=location.pathname.match(/^\/join\/([A-Z0-9]{6})$/i);
   const code=pathMatch?pathMatch[1]:params.get('code');
+  referrer=params.get('ref')||null;
   if(code)await loadAtlas(code);else showWelcome();
   $('loading').classList.add('hidden');
   setupEvents();
@@ -507,7 +529,9 @@ async function loadAtlas(code){
 function showJoinCTA(){
   const hasPin=user?friends.some(f=>f.userId===user?.id):false;
   if(!hasPin&&atlas&&friends.length>=0){
-    $('cta-owner').textContent=atlas.ownerName;
+    $('cta-owner').textContent=referrer||atlas.ownerName;
+    const cnt=friends.length;
+    $('cta-count').textContent=cnt>0?`· ${cnt} friend${cnt!==1?'s':''} joined`:'';
     $('join-cta').classList.remove('hidden');
   }else{$('join-cta').classList.add('hidden')}
 }
@@ -527,8 +551,8 @@ function showConfetti(){
 }
 
 async function shareAtlas(){
-  const url=`${location.origin}/join/${atlas.code}`;
-  const text=`Drop your pin on my Friend Atlas!\n\n${url}\n\nCode: ${atlas.code}`;
+  const url=getShareUrl();
+  const text=getShareText();
   if(navigator.share){try{await navigator.share({title:'Friend Atlas',text,url});return}catch(e){if(e.name==='AbortError')return}}
   navigator.clipboard.writeText(text);toast('Copied to clipboard');
 }
@@ -540,7 +564,7 @@ function setupEvents(){
     if(!name){$('welcome-error').textContent='Enter your name';$('welcome-error').classList.add('show');return}
     $('welcome-error').classList.remove('show');
     const d=await api('/api/atlas/create',{method:'POST',body:JSON.stringify({name})});
-    if(d.success){await loadAtlas(d.atlas.code);toast('Atlas created!');
+    if(d.success){myName=name;await loadAtlas(d.atlas.code);toast('Atlas created!');
       // Immediately prompt creator to drop their pin
       $('add-subtitle').textContent='You\'re the first pin!';
       $('add-name').value=name;$('add-city').value='';$('add-note').value='';
@@ -562,18 +586,38 @@ function setupEvents(){
   $('join-code').onkeydown=e=>{if(e.key==='Enter')$('join-btn').click()};
 
   // Share modal
+  function getShareUrl(){
+    const base=`${location.origin}/join/${atlas.code}`;
+    return myName?`${base}?ref=${encodeURIComponent(myName)}`:base;
+  }
+  function getShareText(){
+    const url=getShareUrl();
+    const cnt=friends.length;
+    return cnt>1
+      ?`Drop your pin on my Friend Atlas! ${cnt} friends already joined.\n\n${url}`
+      :`Drop your pin on my Friend Atlas!\n\n${url}`;
+  }
   const openShare=()=>{
     $('share-code').textContent=atlas.code;
-    const url=`${location.origin}/join/${atlas.code}`;
+    const url=getShareUrl();
     $('share-url').textContent=url;
+    const cnt=friends.length;
+    $('share-proof').textContent=cnt>0?`${cnt} friend${cnt!==1?'s':''} already on this atlas`:'';
+    $('share-proof').style.display=cnt>0?'block':'none';
+    // SMS & WhatsApp deep links
+    const text=encodeURIComponent(getShareText());
+    $('share-sms').href=`sms:?&body=${text}`;
+    $('share-wa').href=`https://wa.me/?text=${text}`;
     $('share-modal').classList.add('show');
   };
   $('share-btn').onclick=openShare;
   $('empty-share-btn').onclick=openShare;
   $('share-close').onclick=()=>$('share-modal').classList.remove('show');
   $('share-modal').onclick=e=>{if(e.target.id==='share-modal')$('share-modal').classList.remove('show')};
-  $('copy-link-btn').onclick=()=>{navigator.clipboard.writeText(`${location.origin}/join/${atlas.code}`);toast('Link copied')};
-  $('copy-text-btn').onclick=()=>shareAtlas();
+  $('copy-link-btn').onclick=()=>{navigator.clipboard.writeText(getShareUrl());toast('Link copied')};
+  $('copy-text-btn').onclick=()=>{
+    navigator.clipboard.writeText(getShareText());toast('Copied to clipboard');
+  };
 
   // Color picker
   const picker=$('color-picker');
@@ -620,10 +664,10 @@ function setupEvents(){
     const name=$('add-name').value.trim(),note=$('add-note').value.trim();
     if(!name){$('add-error').textContent='Enter your name';$('add-error').classList.add('show');return}
     if(!selectedCity){$('add-error').textContent='Select a city from the dropdown';$('add-error').classList.add('show');return}
-    const body=JSON.stringify({name,city:`${selectedCity.name}, ${selectedCity.country}`,country:selectedCity.country,lat:selectedCity.lat,lng:selectedCity.lng,note,color:selectedColor});
+    const body=JSON.stringify({name,city:`${selectedCity.name}, ${selectedCity.country}`,country:selectedCity.country,lat:selectedCity.lat,lng:selectedCity.lng,note,color:selectedColor,referredBy:referrer});
     const d=await api(`/api/atlas/code/${atlas.code}/join-anon`,{method:'POST',body});
     if(d.success){
-      const droppedId=d.friend.id;const cityName=selectedCity.name;
+      const droppedId=d.friend.id;const cityName=selectedCity.name;myName=name;
       $('add-modal').classList.remove('show');hideJoinCTA();
       // Brief pause so modal fully clears before animation plays
       await new Promise(r=>setTimeout(r,350));
@@ -633,12 +677,18 @@ function setupEvents(){
       // Fly to the new pin
       const newFriend=friends.find(f=>f.id===droppedId);
       if(newFriend)map.flyTo([newFriend.lat,newFriend.lng],5,{duration:.8});
+      // Build post-drop card with member roster
+      const others=friends.filter(f=>f.id!==droppedId);
+      $('post-drop-desc').textContent=`You're on ${atlas.ownerName}'s atlas${others.length>0?` with ${others.length} other${others.length!==1?'s':''}`:''}`;
+      const membersEl=$('post-drop-members');
+      membersEl.innerHTML=friends.slice(0,6).map(f=>`<div class="post-drop-avatar" style="background:${getPinColor(f)}">${getInitials(f.name)}</div>`).join('')+(friends.length>6?`<div class="post-drop-count">+${friends.length-6}</div>`:'');
+      $('post-drop-invite').textContent=friends.length<4?`Invite ${4-friends.length} more to make it a party`:'';
       setTimeout(()=>$('post-drop').classList.add('show'),1500);
     }else{$('add-error').textContent=d.error||'Failed';$('add-error').classList.add('show')}
   };
 
   // Post-drop actions
-  $('post-share-btn').onclick=()=>{$('post-drop').classList.remove('show');shareAtlas()};
+  $('post-share-btn').onclick=()=>{$('post-drop').classList.remove('show');openShare()};
   $('post-create-btn').onclick=()=>{$('post-drop').classList.remove('show');atlas=null;history.replaceState({},'','/');showWelcome()};
   document.addEventListener('click',e=>{if($('post-drop').classList.contains('show')&&!e.target.closest('#post-drop'))$('post-drop').classList.remove('show')});
 

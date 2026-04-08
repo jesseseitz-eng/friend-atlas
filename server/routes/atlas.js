@@ -147,10 +147,11 @@ router.post('/code/:code/join-anon',
   body('lng').isFloat({ min: -180, max: 180 }).withMessage('Invalid longitude'),
   body('note').optional().isString().trim().isLength({ max: 500 }),
   body('color').optional().isString().matches(/^#[0-9a-fA-F]{6}$/).withMessage('Invalid color'),
+  body('referredBy').optional().isString().trim().isLength({ max: 100 }),
   validate,
   async (req, res) => {
     try {
-      const { name, city, country, lat, lng, note, color } = req.body;
+      const { name, city, country, lat, lng, note, color, referredBy } = req.body;
       const atlas = await db.getAtlasByCode(req.params.code);
       if (!atlas) return res.status(404).json({ error: 'Atlas not found' });
 
@@ -160,7 +161,7 @@ router.post('/code/:code/join-anon',
         sessionId = crypto.randomBytes(32).toString('hex');
       }
 
-      const friend = await db.addAnonymousFriend(atlas.id, sessionId, name, city, country || null, lat, lng, note, color || null);
+      const friend = await db.addAnonymousFriend(atlas.id, sessionId, name, city, country || null, lat, lng, note, color || null, referredBy || null);
 
       // Set long-lived cookie so anonymous user can edit their pin later
       res.cookie('anon_session', sessionId, {
