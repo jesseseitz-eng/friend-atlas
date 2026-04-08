@@ -185,6 +185,28 @@ router.post('/code/:code/join-anon',
   }
 );
 
+// Rename atlas owner (by anon session — only the creator can rename)
+router.patch('/code/:code/rename',
+  param('code').isString().isLength({ min: 6, max: 6 }).toUpperCase(),
+  body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('Name is required (max 100 chars)'),
+  validate,
+  async (req, res) => {
+    try {
+      const sessionId = req.cookies?.anon_session;
+      if (!sessionId) return res.status(401).json({ error: 'No session' });
+      const atlas = await db.getAtlasByCode(req.params.code);
+      if (!atlas) return res.status(404).json({ error: 'Atlas not found' });
+      const ownerId = `anon_${sessionId.slice(0, 16)}`;
+      if (atlas.owner_id !== ownerId) return res.status(403).json({ error: 'Only the atlas creator can rename' });
+      await db.pool.query('UPDATE atlases SET owner_name = $1, updated_at = NOW() WHERE id = $2', [req.body.name, atlas.id]);
+      res.json({ success: true, name: req.body.name });
+    } catch (error) {
+      console.error('Rename atlas error:', error);
+      res.status(500).json({ error: 'Failed to rename atlas' });
+    }
+  }
+);
+
 // Remove a friend pin (by anon session)
 router.delete('/:atlasId/friend/:friendId', param('atlasId').isInt(), param('friendId').isInt(), validate, async (req, res) => {
   try {
