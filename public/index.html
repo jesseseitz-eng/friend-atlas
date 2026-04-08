@@ -453,7 +453,7 @@ function select(f){
 async function init(){
   map=L.map('map',{zoomControl:false,attributionControl:true}).setView([25,0],2.5);
   L.control.zoom({position:'bottomright'}).addTo(map);
-  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',{attribution:'&copy; <a href="https://stadiamaps.com/">Stadia</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://openstreetmap.org/">OSM</a>',maxZoom:20}).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',{attribution:'&copy; <a href="https://openstreetmap.org/">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',maxZoom:20,subdomains:'abcd'}).addTo(map);
   const params=new URLSearchParams(location.search);
   const pathMatch=location.pathname.match(/^\/join\/([A-Z0-9]{6})$/i);
   const code=pathMatch?pathMatch[1]:params.get('code');
