@@ -22,7 +22,7 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", "unpkg.com", "cdnjs.cloudflare.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com", "unpkg.com"],
       fontSrc: ["'self'", "fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "*.basemaps.cartocdn.com", "*.tile.openstreetmap.org", "*.googleusercontent.com", "*.githubusercontent.com", "*.workos.com"],
+      imgSrc: ["'self'", "data:", "tiles.stadiamaps.com", "*.basemaps.cartocdn.com", "*.tile.openstreetmap.org", "*.googleusercontent.com", "*.githubusercontent.com"],
       connectSrc: ["'self'"],
     },
   },
