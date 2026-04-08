@@ -615,11 +615,17 @@ function setupEvents(){
     const body=JSON.stringify({name,city:`${selectedCity.name}, ${selectedCity.country}`,country:selectedCity.country,lat:selectedCity.lat,lng:selectedCity.lng,note,color:selectedColor});
     const d=await api(`/api/atlas/code/${atlas.code}/join-anon`,{method:'POST',body});
     if(d.success){
+      const droppedId=d.friend.id;const cityName=selectedCity.name;
       $('add-modal').classList.remove('show');hideJoinCTA();
-      lastDroppedId=d.friend.id;
+      // Brief pause so modal fully clears before animation plays
+      await new Promise(r=>setTimeout(r,350));
+      lastDroppedId=droppedId;
       await loadAtlas(atlas.code);hideJoinCTA();
-      showConfetti();toast(`${name} joined in ${selectedCity.name}`);
-      setTimeout(()=>$('post-drop').classList.add('show'),1200);
+      showConfetti();toast(`${name} joined in ${cityName}`);
+      // Fly to the new pin
+      const newFriend=friends.find(f=>f.id===droppedId);
+      if(newFriend)map.flyTo([newFriend.lat,newFriend.lng],5,{duration:.8});
+      setTimeout(()=>$('post-drop').classList.add('show'),1500);
     }else{$('add-error').textContent=d.error||'Failed';$('add-error').classList.add('show')}
   };
 
