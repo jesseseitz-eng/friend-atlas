@@ -70,7 +70,7 @@ router.get('/code/:code', param('code').isString().isLength({ min: 6, max: 6 }).
       friends: friends.map(f => ({
         id: f.id, name: f.name, city: f.city, country: f.country,
         lat: parseFloat(f.lat), lng: parseFloat(f.lng), note: f.note,
-        profilePicture: f.profile_picture, createdAt: f.created_at,
+        color: f.color, profilePicture: f.profile_picture, createdAt: f.created_at,
       })),
       stats: { totalFriends: parseInt(stats.total_friends), countries: parseInt(stats.countries), cities: parseInt(stats.cities) },
     });
@@ -146,10 +146,11 @@ router.post('/code/:code/join-anon',
   body('lat').isFloat({ min: -90, max: 90 }).withMessage('Invalid latitude'),
   body('lng').isFloat({ min: -180, max: 180 }).withMessage('Invalid longitude'),
   body('note').optional().isString().trim().isLength({ max: 500 }),
+  body('color').optional().isString().matches(/^#[0-9a-fA-F]{6}$/).withMessage('Invalid color'),
   validate,
   async (req, res) => {
     try {
-      const { name, city, country, lat, lng, note } = req.body;
+      const { name, city, country, lat, lng, note, color } = req.body;
       const atlas = await db.getAtlasByCode(req.params.code);
       if (!atlas) return res.status(404).json({ error: 'Atlas not found' });
 
@@ -159,7 +160,7 @@ router.post('/code/:code/join-anon',
         sessionId = crypto.randomBytes(32).toString('hex');
       }
 
-      const friend = await db.addAnonymousFriend(atlas.id, sessionId, name, city, country || null, lat, lng, note);
+      const friend = await db.addAnonymousFriend(atlas.id, sessionId, name, city, country || null, lat, lng, note, color || null);
 
       // Set long-lived cookie so anonymous user can edit their pin later
       res.cookie('anon_session', sessionId, {

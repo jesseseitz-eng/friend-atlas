@@ -37,6 +37,8 @@
     @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
     @keyframes glow{0%,100%{box-shadow:0 0 20px var(--accent-glow)}50%{box-shadow:0 0 40px var(--accent-glow),0 0 60px rgba(124,58,237,.15)}}
     @keyframes pinDrop{0%{transform:scale(0) translateY(-30px);opacity:0}50%{transform:scale(1.2) translateY(0);opacity:1}70%{transform:scale(.9)}100%{transform:scale(1);opacity:1}}
+    @keyframes ripple{0%{transform:scale(1);opacity:.6}100%{transform:scale(3.5);opacity:0}}
+    @keyframes pinGlow{0%{box-shadow:0 0 0 0 var(--pin-color,.5)}50%{box-shadow:0 0 20px 8px var(--pin-color,.3)}100%{box-shadow:0 0 0 0 transparent}}
     @keyframes confettiPop{0%{transform:scale(0);opacity:1}50%{opacity:1}100%{transform:scale(1) translate(var(--tx),var(--ty));opacity:0}}
     @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 
@@ -104,11 +106,27 @@
     .leaflet-control-zoom a:hover{background:var(--surface2)!important}
 
     /* Map Pins */
+    .map-pin-wrap{position:relative}
     .map-pin{display:flex;align-items:center;justify-content:center;border-radius:50%;font-weight:800;color:#fff;cursor:pointer;transition:all .2s;border:2.5px solid rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(0,0,0,.3),0 0 0 0 rgba(255,255,255,0)}
     .map-pin:hover{transform:scale(1.2);box-shadow:0 4px 16px rgba(0,0,0,.4),0 0 0 3px rgba(255,255,255,.15)}
     .map-pin.selected{border-color:#fff;box-shadow:0 0 0 4px rgba(124,58,237,.4),0 4px 20px rgba(0,0,0,.5)}
     .map-pin img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-    .pin-dropping .map-pin{animation:pinDrop .5s cubic-bezier(.34,1.56,.64,1) forwards}
+    .map-pin.new-pin{animation:pinDrop .5s cubic-bezier(.34,1.56,.64,1) forwards,pinGlow 1.5s ease-out .5s}
+    .pin-ripple{position:absolute;top:50%;left:50%;width:100%;height:100%;border-radius:50%;transform:translate(-50%,-50%);background:var(--pin-color,var(--accent));opacity:0;animation:ripple 1s ease-out forwards;pointer-events:none}
+
+    /* Pin Tooltip */
+    .pin-tooltip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(4px);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;white-space:nowrap;opacity:0;pointer-events:none;transition:all .15s ease-out;z-index:1000;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+    .pin-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--surface)}
+    .map-pin-wrap:hover .pin-tooltip{opacity:1;transform:translateX(-50%) translateY(0)}
+    .pin-tooltip-name{font-size:13px;font-weight:700;color:var(--text)}
+    .pin-tooltip-city{font-size:11px;color:var(--text2);margin-top:1px}
+
+    /* Color Picker */
+    .color-picker{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+    .color-swatch{width:36px;height:36px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .2s;position:relative}
+    .color-swatch:hover{transform:scale(1.15);border-color:rgba(255,255,255,.3)}
+    .color-swatch.active{border-color:#fff;transform:scale(1.1)}
+    .color-swatch.active::after{content:'';position:absolute;inset:-1px;border-radius:50%;border:2px solid rgba(255,255,255,.5)}
 
     /* Stats Bar */
     #stats{position:fixed;bottom:20px;left:20px;display:flex;gap:2px;background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:100px;padding:4px;font-size:12px;z-index:100}
@@ -360,6 +378,7 @@
     <div class="form-group"><label class="form-label">Your Name</label><input type="text" class="input" id="add-name" placeholder="Enter your name"></div>
     <div class="form-group"><label class="form-label">City</label><div class="city-wrap"><input type="text" class="input" id="add-city" placeholder="Start typing a city..." autocomplete="off"><div id="city-dropdown"></div></div><div class="city-badge" id="city-badge"></div></div>
     <div class="form-group"><label class="form-label">Note <span class="opt">(optional)</span></label><input type="text" class="input" id="add-note" placeholder="e.g. Always down for coffee"></div>
+    <div class="form-group"><label class="form-label">Pin Color</label><div class="color-picker" id="color-picker"></div></div>
     <button class="btn btn-primary btn-full" id="add-submit">Drop My Pin</button>
   </div>
 </div>
@@ -391,7 +410,9 @@ const ALIASES={nyc:'new york',ny:'new york',la:'los angeles',sf:'san francisco',
 function searchCities(q){if(!q||q.length<1)return[];q=ALIASES[q.toLowerCase().trim()]||q.toLowerCase().trim();return CITIES.map(c=>{const n=c.name.toLowerCase(),co=c.country.toLowerCase();let s=0;if(n===q)s=1000;else if(n.startsWith(q))s=500;else if(n.includes(q))s=300;else if(co.startsWith(q))s=200;else if(co.includes(q))s=100;return s>0?{...c,score:s}:null}).filter(Boolean).sort((a,b)=>b.score-a.score).slice(0,8)}
 
 let user=null,atlas=null,friends=[],stats={totalFriends:0,cities:0,countries:0},selected=null,selectedCity=null,toRemove=null,map=null,markers=[];
+const PIN_COLORS=['#7c3aed','#3b82f6','#06b6d4','#22c55e','#eab308','#f97316','#f43f5e','#ec4899'];
 const COLORS=['#7c3aed','#8b5cf6','#ec4899','#f43f5e','#f97316','#eab308','#22c55e','#14b8a6','#06b6d4','#3b82f6'];
+let selectedColor=PIN_COLORS[0],lastDroppedId=null;
 const $=id=>document.getElementById(id);
 const getColor=n=>{let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return COLORS[Math.abs(h)%COLORS.length]};
 const getInitials=n=>n.split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
@@ -411,12 +432,14 @@ function render(){
   $('stat-cities').textContent=stats.cities;
   $('stat-countries').textContent=stats.countries;
   $('empty').classList.toggle('show',friends.length===0);
-  $('sidebar').innerHTML=friends.map((f,idx)=>`<div class="friend-item ${selected?.id===f.id?'selected':''}" data-id="${f.id}" style="animation-delay:${idx*50}ms"><div class="friend-avatar" style="background:${f.profilePicture?'transparent':getColor(f.name)}">${f.profilePicture?`<img src="${f.profilePicture}">`:getInitials(f.name)}</div><div class="friend-info"><div class="friend-name">${esc(f.name)}</div><div class="friend-city">${esc(f.city)}</div></div></div>`).join('');
+  $('sidebar').innerHTML=friends.map((f,idx)=>`<div class="friend-item ${selected?.id===f.id?'selected':''}" data-id="${f.id}" style="animation-delay:${idx*50}ms"><div class="friend-avatar" style="background:${f.profilePicture?'transparent':getPinColor(f)}">${f.profilePicture?`<img src="${f.profilePicture}">`:getInitials(f.name)}</div><div class="friend-info"><div class="friend-name">${esc(f.name)}</div><div class="friend-city">${esc(f.city)}</div></div></div>`).join('');
   $('sidebar').querySelectorAll('.friend-item').forEach(el=>el.onclick=()=>select(friends.find(f=>f.id==el.dataset.id)));
   renderMarkers();
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+function getPinColor(f){return f.color||getColor(f.name)}
 
 function renderMarkers(){
   if(!map)return;
@@ -424,17 +447,21 @@ function renderMarkers(){
   const groups=getGroups();
   Object.values(groups).forEach(g=>g.forEach((f,i)=>{
     const sel=selected?.id===f.id,pos=getPos(f,i,g.length),sz=sel?46:38;
-    const icon=L.divIcon({className:'',html:`<div class="map-pin ${sel?'selected':''}" style="width:${sz}px;height:${sz}px;background:${f.profilePicture?'transparent':getColor(f.name)};font-size:${sel?'15px':'13px'}">${f.profilePicture?`<img src="${f.profilePicture}">`:getInitials(f.name)}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
+    const color=getPinColor(f);
+    const isNew=f.id===lastDroppedId;
+    const rippleHtml=isNew?`<div class="pin-ripple" style="--pin-color:${color}"></div>`:'';
+    const icon=L.divIcon({className:'',html:`<div class="map-pin-wrap">${rippleHtml}<div class="map-pin ${sel?'selected':''} ${isNew?'new-pin':''}" style="width:${sz}px;height:${sz}px;background:${f.profilePicture?'transparent':color};font-size:${sel?'15px':'13px'};--pin-color:${color}">${f.profilePicture?`<img src="${f.profilePicture}">`:getInitials(f.name)}</div><div class="pin-tooltip"><div class="pin-tooltip-name">${esc(f.name)}</div><div class="pin-tooltip-city">${esc(f.city)}</div></div></div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
     const m=L.marker([pos.lat,pos.lng],{icon}).addTo(map);
     m.on('click',()=>select(f));markers.push(m);
   }));
+  if(lastDroppedId)setTimeout(()=>{lastDroppedId=null},2000);
 }
 
 function select(f){
   selected=f;
   if(f){
     $('detail-avatar').innerHTML=f.profilePicture?`<img src="${f.profilePicture}">`:getInitials(f.name);
-    $('detail-avatar').style.background=f.profilePicture?'transparent':getColor(f.name);
+    $('detail-avatar').style.background=f.profilePicture?'transparent':getPinColor(f);
     $('detail-name').textContent=f.name;
     $('detail-city').textContent=f.city;
     $('detail-note').textContent=f.note?`"${f.note}"`:'';
@@ -454,6 +481,8 @@ async function init(){
   map=L.map('map',{zoomControl:false,attributionControl:true}).setView([25,0],2.5);
   L.control.zoom({position:'bottomright'}).addTo(map);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',{attribution:'&copy; <a href="https://openstreetmap.org/">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',maxZoom:20,subdomains:'abcd'}).addTo(map);
+  // Subtle country borders overlay
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:20,subdomains:'abcd',opacity:.15}).addTo(map);
   const params=new URLSearchParams(location.search);
   const pathMatch=location.pathname.match(/^\/join\/([A-Z0-9]{6})$/i);
   const code=pathMatch?pathMatch[1]:params.get('code');
@@ -538,12 +567,23 @@ function setupEvents(){
   $('copy-link-btn').onclick=()=>{navigator.clipboard.writeText(`${location.origin}/join/${atlas.code}`);toast('Link copied')};
   $('copy-text-btn').onclick=()=>shareAtlas();
 
+  // Color picker
+  const picker=$('color-picker');
+  PIN_COLORS.forEach(c=>{
+    const sw=document.createElement('div');sw.className='color-swatch'+(c===selectedColor?' active':'');
+    sw.style.background=c;sw.dataset.color=c;
+    sw.onclick=()=>{picker.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));sw.classList.add('active');selectedColor=c};
+    picker.appendChild(sw);
+  });
+
   // Add pin modal
   const openAdd=()=>{
     $('add-subtitle').textContent=atlas.ownerName?`on ${atlas.ownerName}'s atlas`:'Add yourself';
     $('add-name').value='';$('add-city').value='';$('add-note').value='';
     $('city-dropdown').classList.remove('show');$('city-badge').classList.remove('show');$('add-error').classList.remove('show');
-    selectedCity=null;$('add-modal').classList.add('show');hideJoinCTA();
+    selectedCity=null;selectedColor=PIN_COLORS[Math.floor(Math.random()*PIN_COLORS.length)];
+    picker.querySelectorAll('.color-swatch').forEach(s=>{s.classList.toggle('active',s.dataset.color===selectedColor)});
+    $('add-modal').classList.add('show');hideJoinCTA();
   };
   $('add-btn').onclick=openAdd;
   $('cta-btn').onclick=openAdd;
@@ -572,12 +612,13 @@ function setupEvents(){
     const name=$('add-name').value.trim(),note=$('add-note').value.trim();
     if(!name){$('add-error').textContent='Enter your name';$('add-error').classList.add('show');return}
     if(!selectedCity){$('add-error').textContent='Select a city from the dropdown';$('add-error').classList.add('show');return}
-    const body=JSON.stringify({name,city:`${selectedCity.name}, ${selectedCity.country}`,country:selectedCity.country,lat:selectedCity.lat,lng:selectedCity.lng,note});
+    const body=JSON.stringify({name,city:`${selectedCity.name}, ${selectedCity.country}`,country:selectedCity.country,lat:selectedCity.lat,lng:selectedCity.lng,note,color:selectedColor});
     const d=await api(`/api/atlas/code/${atlas.code}/join-anon`,{method:'POST',body});
     if(d.success){
       $('add-modal').classList.remove('show');hideJoinCTA();
+      lastDroppedId=d.friend.id;
       await loadAtlas(atlas.code);hideJoinCTA();
-      showConfetti();toast('Pin dropped!');
+      showConfetti();toast(`${name} joined in ${selectedCity.name}`);
       setTimeout(()=>$('post-drop').classList.add('show'),1200);
     }else{$('add-error').textContent=d.error||'Failed';$('add-error').classList.add('show')}
   };

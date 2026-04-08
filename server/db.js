@@ -55,6 +55,12 @@ async function initialize() {
         ALTER TABLE friends ADD COLUMN IF NOT EXISTS session_id VARCHAR(64);
       EXCEPTION WHEN others THEN NULL;
       END $$;
+
+      -- Add color column for custom pin colors
+      DO $$ BEGIN
+        ALTER TABLE friends ADD COLUMN IF NOT EXISTS color VARCHAR(7);
+      EXCEPTION WHEN others THEN NULL;
+      END $$;
     `);
   } finally {
     client.release();
@@ -150,7 +156,7 @@ async function exportAtlas(atlasId, ownerId) {
   return { atlas: atlas.rows[0], friends, exportedAt: new Date().toISOString() };
 }
 
-async function addAnonymousFriend(atlasId, sessionId, name, city, country, lat, lng, note) {
+async function addAnonymousFriend(atlasId, sessionId, name, city, country, lat, lng, note, color) {
   // Check if this session already has a pin on this atlas
   const existing = await pool.query(
     'SELECT id FROM friends WHERE atlas_id = $1 AND session_id = $2',
@@ -159,16 +165,16 @@ async function addAnonymousFriend(atlasId, sessionId, name, city, country, lat, 
   if (existing.rows[0]) {
     // Update existing anonymous pin
     const result = await pool.query(
-      `UPDATE friends SET name = $1, city = $2, country = $3, lat = $4, lng = $5, note = $6, updated_at = NOW()
-       WHERE atlas_id = $7 AND session_id = $8 RETURNING *`,
-      [name, city, country, lat, lng, note || null, atlasId, sessionId]
+      `UPDATE friends SET name = $1, city = $2, country = $3, lat = $4, lng = $5, note = $6, color = $7, updated_at = NOW()
+       WHERE atlas_id = $8 AND session_id = $9 RETURNING *`,
+      [name, city, country, lat, lng, note || null, color || null, atlasId, sessionId]
     );
     return result.rows[0];
   }
   const result = await pool.query(
-    `INSERT INTO friends (atlas_id, user_id, session_id, name, city, country, lat, lng, note)
-     VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [atlasId, sessionId, name, city, country, lat, lng, note || null]
+    `INSERT INTO friends (atlas_id, user_id, session_id, name, city, country, lat, lng, note, color)
+     VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+    [atlasId, sessionId, name, city, country, lat, lng, note || null, color || null]
   );
   return result.rows[0];
 }
