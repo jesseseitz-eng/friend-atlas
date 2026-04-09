@@ -549,6 +549,17 @@ function showConfetti(){
   setTimeout(()=>container.remove(),1200);
 }
 
+function getShareUrl(){
+  const base=`${location.origin}/join/${atlas.code}`;
+  return myName?`${base}?ref=${encodeURIComponent(myName)}`:base;
+}
+function getShareText(){
+  const url=getShareUrl();
+  const cnt=friends.length;
+  return cnt>1
+    ?`Drop your pin on my Friend Atlas! ${cnt} friends already joined.\n\n${url}`
+    :`Drop your pin on my Friend Atlas!\n\n${url}`;
+}
 async function shareAtlas(){
   const url=getShareUrl();
   const text=getShareText();
@@ -585,17 +596,6 @@ function setupEvents(){
   $('join-code').onkeydown=e=>{if(e.key==='Enter')$('join-btn').click()};
 
   // Share modal
-  function getShareUrl(){
-    const base=`${location.origin}/join/${atlas.code}`;
-    return myName?`${base}?ref=${encodeURIComponent(myName)}`:base;
-  }
-  function getShareText(){
-    const url=getShareUrl();
-    const cnt=friends.length;
-    return cnt>1
-      ?`Drop your pin on my Friend Atlas! ${cnt} friends already joined.\n\n${url}`
-      :`Drop your pin on my Friend Atlas!\n\n${url}`;
-  }
   const openShare=()=>{
     $('share-code').textContent=atlas.code;
     const url=getShareUrl();
@@ -664,7 +664,9 @@ function setupEvents(){
     if(!name){$('add-error').textContent='Enter your name';$('add-error').classList.add('show');return}
     if(!selectedCity){$('add-error').textContent='Select a city from the dropdown';$('add-error').classList.add('show');return}
     const body=JSON.stringify({name,city:`${selectedCity.name}, ${selectedCity.country}`,country:selectedCity.country,lat:selectedCity.lat,lng:selectedCity.lng,note,color:selectedColor,referredBy:referrer});
-    const d=await api(`/api/atlas/code/${atlas.code}/join-anon`,{method:'POST',body});
+    let d;
+    try{d=await api(`/api/atlas/code/${atlas.code}/join-anon`,{method:'POST',body})}catch(e){$('add-error').textContent='Network error - check connection';$('add-error').classList.add('show');console.error('Join error:',e);return}
+    if(d.error){$('add-error').textContent=d.error;$('add-error').classList.add('show');return}
     if(d.success){
       const droppedId=d.friend.id;const cityName=selectedCity.name;myName=name;
       $('add-modal').classList.remove('show');hideJoinCTA();

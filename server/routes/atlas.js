@@ -43,7 +43,7 @@ router.post('/create',
           maxAge: 365 * 24 * 60 * 60 * 1000,
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+          sameSite: 'lax',
         });
       }
       ownerId = `anon_${sessionId.slice(0, 16)}`;
@@ -168,7 +168,7 @@ router.post('/code/:code/join-anon',
         maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        sameSite: 'lax',
       });
 
       res.json({
