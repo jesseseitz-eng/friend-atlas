@@ -502,11 +502,9 @@ async function init(){
   map=L.map('map',{zoomControl:false,attributionControl:true}).setView([25,0],2.5);
   L.control.zoom({position:'bottomright'}).addTo(map);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',{attribution:'&copy; <a href="https://openstreetmap.org/">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',maxZoom:20,subdomains:'abcd'}).addTo(map);
-  // Subtle country borders overlay
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:20,subdomains:'abcd',opacity:.15}).addTo(map);
   const params=new URLSearchParams(location.search);
   const pathMatch=location.pathname.match(/^\/join\/([A-Z0-9]{6})$/i);
-  const code=pathMatch?pathMatch[1]:params.get('code');
+  const code=pathMatch?pathMatch[1]:params.get('code')||localStorage.getItem('lastAtlas');
   referrer=params.get('ref')||null;
   if(code)await loadAtlas(code);else showWelcome();
   $('loading').classList.add('hidden');
@@ -520,6 +518,7 @@ async function loadAtlas(code){
     const data=await api(`/api/atlas/code/${code}`);
     if(data.error){toast('Atlas not found');showWelcome();return}
     atlas=data.atlas;friends=data.friends;stats=data.stats;
+    localStorage.setItem('lastAtlas',atlas.code);
     $('welcome').classList.add('hidden');
     history.replaceState({},'',`/join/${code}`);
     render();showJoinCTA();
@@ -707,7 +706,7 @@ function setupEvents(){
   document.addEventListener('click',e=>{if(!e.target.closest('#user-btn')&&!e.target.closest('#user-menu'))$('user-menu').classList.remove('show')});
 
   // Menu actions
-  $('menu-switch').onclick=()=>{$('user-menu').classList.remove('show');hideJoinCTA();$('post-drop').classList.remove('show');showWelcome()};
+  $('menu-switch').onclick=()=>{$('user-menu').classList.remove('show');hideJoinCTA();$('post-drop').classList.remove('show');localStorage.removeItem('lastAtlas');atlas=null;history.replaceState({},'','/');showWelcome()};
   $('menu-export').onclick=async()=>{
     $('user-menu').classList.remove('show');
     const d=await api(`/api/atlas/${atlas.id}/export`);
