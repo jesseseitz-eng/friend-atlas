@@ -241,6 +241,16 @@
     #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(12px);padding:12px 24px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:14px;border-radius:100px;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
     #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+    /* Activity Feed */
+    #activity{position:fixed;top:72px;right:16px;display:flex;flex-direction:column;gap:6px;z-index:150;pointer-events:none;max-width:280px}
+    .activity-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:var(--radius-sm);animation:fadeIn .3s ease-out;pointer-events:auto;opacity:0;transition:opacity .3s}
+    .activity-item.show{opacity:1}
+    .activity-item.hide{opacity:0;transform:translateX(20px)}
+    .activity-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+    .activity-text{font-size:12px;color:var(--text2);line-height:1.4}
+    .activity-text strong{color:var(--text);font-weight:700}
+    .activity-time{color:var(--text3);font-size:11px}
+
     /* Confetti */
     .confetti{position:fixed;pointer-events:none;z-index:9998}
     .confetti-dot{position:absolute;width:8px;height:8px;border-radius:50%;animation:confettiPop .8s ease-out forwards}
@@ -283,6 +293,7 @@
       .cta-text{font-size:13px}
       #post-drop{bottom:16px;left:12px;right:12px;transform:none;padding:20px 24px}
       .post-drop-actions{flex-direction:column}
+      #activity{top:60px;right:10px;max-width:220px}
     }
     @media(max-width:480px){#sidebar{display:none}}
   </style>
@@ -358,6 +369,7 @@
   </div>
 </div>
 
+<div id="activity"></div>
 <div id="sidebar"></div>
 
 <div id="detail">
@@ -438,6 +450,7 @@ const $=id=>document.getElementById(id);
 const getColor=n=>{let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return COLORS[Math.abs(h)%COLORS.length]};
 const getInitials=n=>n.split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
 const formatDate=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+function timeAgo(d){const s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return 'just now';if(s<3600)return `${Math.floor(s/60)}m ago`;if(s<86400)return `${Math.floor(s/3600)}h ago`;if(s<604800)return `${Math.floor(s/86400)}d ago`;return formatDate(d)}
 const toast=m=>{const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)};
 const api=async(url,opts={})=>(await fetch(url,{...opts,headers:{'Content-Type':'application/json',...opts.headers}})).json();
 
@@ -521,7 +534,7 @@ async function loadAtlas(code){
     localStorage.setItem('lastAtlas',atlas.code);
     $('welcome').classList.add('hidden');
     history.replaceState({},'',`/join/${code}`);
-    render();showJoinCTA();
+    render();showJoinCTA();showActivity();
   }catch(e){toast('Failed to load');showWelcome()}
 }
 
@@ -547,6 +560,23 @@ function showConfetti(){
     container.appendChild(dot);
   }
   setTimeout(()=>container.remove(),1200);
+}
+
+function showActivity(){
+  const feed=$('activity');feed.innerHTML='';
+  // Show up to 3 most recent joins from the last 7 days
+  const recent=friends.filter(f=>(Date.now()-new Date(f.createdAt))<7*86400*1000).slice(0,3);
+  if(!recent.length)return;
+  recent.forEach((f,i)=>{
+    setTimeout(()=>{
+      const el=document.createElement('div');el.className='activity-item';
+      el.innerHTML=`<div class="activity-avatar" style="background:${getPinColor(f)}">${getInitials(f.name)}</div><div class="activity-text"><strong>${esc(f.name)}</strong> joined in ${esc(f.city)} <span class="activity-time">${timeAgo(f.createdAt)}</span></div>`;
+      feed.appendChild(el);
+      requestAnimationFrame(()=>el.classList.add('show'));
+      // Auto-dismiss after 5s
+      setTimeout(()=>{el.classList.remove('show');el.classList.add('hide');setTimeout(()=>el.remove(),300)},5000);
+    },i*800);
+  });
 }
 
 function getShareUrl(){
