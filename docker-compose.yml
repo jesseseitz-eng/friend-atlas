@@ -8,10 +8,8 @@ services:
       - NODE_ENV=development
       - PORT=3000
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/friendatlas
-      - WORKOS_API_KEY=${WORKOS_API_KEY}
-      - WORKOS_CLIENT_ID=${WORKOS_CLIENT_ID}
-      - WORKOS_REDIRECT_URI=http://localhost:3000/auth/callback
       - SESSION_SECRET=${SESSION_SECRET:-dev-secret-change-me}
+      - APP_URL=http://localhost:3000
     depends_on:
       db:
         condition: service_healthy

@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -63,6 +64,13 @@ app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
 app.use(session({
+  store: new pgSession({
+    pool: db.pool,
+    tableName: 'session',          // matches the session_create migration
+    createTableIfMissing: true,    // create the session table if not present
+    pruneSessionInterval: 60 * 15, // prune expired sessions every 15 min
+  }),
+  name: 'fa.sid',
   secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
   resave: false,
   saveUninitialized: false,
