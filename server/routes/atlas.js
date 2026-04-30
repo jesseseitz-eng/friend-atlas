@@ -142,12 +142,12 @@ router.post('/code/:code/join-anon',
   param('code').isString().isLength({ min: 6, max: 6 }).toUpperCase(),
   body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('Name is required (max 100 chars)'),
   body('city').isString().trim().isLength({ min: 1, max: 255 }).withMessage('City is required'),
-  body('country').optional().isString().trim().isLength({ max: 100 }),
+  body('country').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 }).withMessage('Invalid country'),
   body('lat').isFloat({ min: -90, max: 90 }).withMessage('Invalid latitude'),
   body('lng').isFloat({ min: -180, max: 180 }).withMessage('Invalid longitude'),
-  body('note').optional().isString().trim().isLength({ max: 500 }),
-  body('color').optional().isString().matches(/^#[0-9a-fA-F]{6}$/).withMessage('Invalid color'),
-  body('referredBy').optional().isString().trim().isLength({ max: 100 }),
+  body('note').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }).withMessage('Note too long (max 500 chars)'),
+  body('color').optional({ values: 'falsy' }).isString().matches(/^#[0-9a-fA-F]{6}$/).withMessage('Invalid color'),
+  body('referredBy').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 }).withMessage('Invalid referrer'),
   validate,
   async (req, res) => {
     try {
@@ -217,6 +217,14 @@ router.delete('/:atlasId/friend/:friendId', param('atlasId').isInt(), param('fri
     const deleted = await db.removeFriendBySession(req.params.friendId, sessionId);
     if (!deleted) return res.status(404).json({ error: 'Friend not found or unauthorized' });
     res.json({ success: true });
+  } catch (error) {
+    console.error('Remove friend error:', error);
+    res.status(500).json({ error: 'Failed to remove friend' });
+  }
+});
+
+module.exports = router;
+ccess: true });
   } catch (error) {
     console.error('Remove friend error:', error);
     res.status(500).json({ error: 'Failed to remove friend' });
