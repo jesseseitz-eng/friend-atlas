@@ -15,6 +15,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 
+// Trust the first proxy hop so X-Forwarded-* headers are honored.
+// Render (and most PaaS) terminates TLS at a load balancer in front of the app,
+// which sets X-Forwarded-For. Without this, express-rate-limit throws
+// ERR_ERL_UNEXPECTED_X_FORWARDED_FOR and rate-limited routes fail.
+if (isProd) {
+  app.set('trust proxy', 1);
+}
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
