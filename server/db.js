@@ -67,6 +67,12 @@ async function initialize() {
         ALTER TABLE friends ADD COLUMN IF NOT EXISTS referred_by VARCHAR(100);
       EXCEPTION WHEN others THEN NULL;
       END $$;
+
+      -- Add map_name column so the atlas itself can have a label distinct from owner_name
+      DO $$ BEGIN
+        ALTER TABLE atlases ADD COLUMN IF NOT EXISTS map_name VARCHAR(120);
+      EXCEPTION WHEN others THEN NULL;
+      END $$;
     `);
   } finally {
     client.release();
@@ -83,10 +89,10 @@ async function findOrCreateUser({ id, email, name, profilePicture }) {
   return result.rows[0];
 }
 
-async function createAtlas(code, ownerId, ownerName) {
+async function createAtlas(code, ownerId, ownerName, mapName) {
   const result = await pool.query(
-    'INSERT INTO atlases (code, owner_id, owner_name) VALUES ($1, $2, $3) RETURNING *',
-    [code.toUpperCase(), ownerId, ownerName]
+    'INSERT INTO atlases (code, owner_id, owner_name, map_name) VALUES ($1, $2, $3, $4) RETURNING *',
+    [code.toUpperCase(), ownerId, ownerName, mapName || null]
   );
   return result.rows[0];
 }
@@ -215,6 +221,12 @@ async function getMembershipsByUser(userId) {
 }
 
 module.exports = {
+  pool, initialize, findOrCreateUser, createAtlas, getAtlasByCode,
+  getAtlasesByOwner, deleteAtlas, addOrUpdateFriend, getFriendsByAtlas,
+  removeFriend, getAtlasStats, exportAtlas, addAnonymousFriend,
+  claimAnonymousFriends, removeFriendBySession, getMembershipsByUser,
+};
+ {
   pool, initialize, findOrCreateUser, createAtlas, getAtlasByCode,
   getAtlasesByOwner, deleteAtlas, addOrUpdateFriend, getFriendsByAtlas,
   removeFriend, getAtlasStats, exportAtlas, addAnonymousFriend,

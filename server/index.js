@@ -137,6 +137,8 @@ app.get('/join/:code', async (req, res) => {
       const ogUrl = `${appUrl}/join/${code}`;
       const ogImage = `${appUrl}/api/atlas/code/${code}/og-image`;
 
+      // Inject OG tags right before </head>. This avoids depending on the exact
+      // text of the static description tag (which can drift as the page evolves).
       const ogTags = `
     <meta property="og:type" content="website">
     <meta property="og:title" content="${ogTitle}">
@@ -148,12 +150,10 @@ app.get('/join/:code', async (req, res) => {
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="${ogTitle}">
     <meta name="twitter:description" content="${ogDesc}">
-    <meta name="twitter:image" content="${ogImage}">`;
+    <meta name="twitter:image" content="${ogImage}">
+  </head>`;
 
-      const html = indexHtml.replace(
-        '<meta name="description" content="Map your friendships across the world">',
-        `<meta name="description" content="${ogDesc}">${ogTags}`
-      );
+      const html = indexHtml.replace('</head>', ogTags);
       return res.send(html);
     }
   } catch (error) {

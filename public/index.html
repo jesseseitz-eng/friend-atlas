@@ -3,769 +3,1241 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Friend Atlas</title>
-  <meta name="description" content="Map your friendships across the world">
+  <title>Friend Atlas — Where are your people?</title>
+  <meta name="description" content="Create a private shared map for your friends, classmates, family, or travel crew. Drop pins, see where everyone is.">
   <meta property="og:title" content="Friend Atlas">
-  <meta property="og:description" content="Map your friendships across the world. Create your atlas, share it, and let friends drop their pin!">
+  <meta property="og:description" content="Create a private shared map for your friends, classmates, family, or travel crew. Drop pins, see where everyone is.">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#0a0a0f">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     :root{
+      /* Dark theme (atlas/map view) */
       --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--surface3:#222233;
-      --border:rgba(255,255,255,.06);--border-hover:rgba(255,255,255,.12);
-      --accent:#7c3aed;--accent2:#a78bfa;--accent-glow:rgba(124,58,237,.3);
-      --pink:#ec4899;--pink-glow:rgba(236,72,153,.2);
+      --border:rgba(255,255,255,.08);--border-hover:rgba(255,255,255,.16);
       --text:#f1f1f4;--text2:#9898a6;--text3:#5a5a6e;
+      --accent:#7c3aed;--accent2:#a78bfa;--accent-glow:rgba(124,58,237,.3);
+      --coral:#fb7185;--blue:#60a5fa;--green:#34d399;--gold:#facc15;--pink:#f472b6;
       --success:#34d399;--danger:#f43f5e;
-      --glass:rgba(18,18,26,.75);--glass-border:rgba(255,255,255,.08);
       --radius:16px;--radius-sm:10px;--radius-lg:24px;
+      /* Cream theme (welcome/homepage view) */
+      --cream-bg:#fdfaf3;--cream-surface:#ffffff;--cream-border:#e8e4dc;
+      --cream-text:#1a1a26;--cream-text2:#6b6b78;--cream-shadow:0 4px 24px rgba(0,0,0,.06);
     }
-    html,body{height:100%;overflow:hidden;font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased}
-
-    /* Animations */
-    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes fadeInScale{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
-    @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-    @keyframes glow{0%,100%{box-shadow:0 0 20px var(--accent-glow)}50%{box-shadow:0 0 40px var(--accent-glow),0 0 60px rgba(124,58,237,.15)}}
-    @keyframes pinDrop{0%{transform:scale(0) translateY(-30px);opacity:0}50%{transform:scale(1.2) translateY(0);opacity:1}70%{transform:scale(.9)}100%{transform:scale(1);opacity:1}}
-    @keyframes ripple{0%{transform:scale(1);opacity:.6}100%{transform:scale(3.5);opacity:0}}
-    @keyframes pinGlow{0%{box-shadow:0 0 0 0 var(--pin-color,.5)}50%{box-shadow:0 0 20px 8px var(--pin-color,.3)}100%{box-shadow:0 0 0 0 transparent}}
-    @keyframes confettiPop{0%{transform:scale(0);opacity:1}50%{opacity:1}100%{transform:scale(1) translate(var(--tx),var(--ty));opacity:0}}
-    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+    html,body{height:100%;font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased}
+    body{overflow:hidden}
+    body.welcome-mode{background:var(--cream-bg);color:var(--cream-text);overflow:auto}
+    a{color:inherit;text-decoration:none}
+    button{font-family:inherit;cursor:pointer}
+    .hidden{display:none !important}
 
     /* Loading */
-    #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;z-index:10000;transition:opacity .4s}
-    #loading.hidden{opacity:0;pointer-events:none}
-    .loading-icon{font-size:48px;animation:float 2s ease-in-out infinite}
-    .loading-bar{width:120px;height:3px;background:var(--surface3);border-radius:3px;overflow:hidden}
-    .loading-bar::after{content:'';display:block;width:40%;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;animation:shimmer 1.2s ease-in-out infinite;background-size:200% 100%}
+    #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity .4s}
+    #loading.welcome{background:var(--cream-bg)}
+    #loading.fade{opacity:0;pointer-events:none}
+    .loading-icon{font-size:48px;animation:bounce 1.2s infinite}
+    .loading-bar{width:120px;height:3px;background:rgba(124,58,237,.2);border-radius:2px;overflow:hidden;margin-top:24px}
+    .loading-bar::after{content:'';display:block;height:100%;background:var(--accent);animation:loadbar 1s infinite}
+    @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+    @keyframes loadbar{0%{width:0;margin-left:0}50%{width:100%;margin-left:0}100%{width:0;margin-left:100%}}
 
-    /* Welcome */
-    #welcome{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9000}
-    #welcome.hidden{display:none}
-    .welcome-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:48px 40px;max-width:400px;width:100%;text-align:center;animation:fadeInScale .5s ease-out;position:relative;overflow:hidden}
-    .welcome-card::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle at 50% 0%,rgba(124,58,237,.08) 0%,transparent 50%);pointer-events:none}
-    .welcome-logo{font-size:14px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--accent2);margin-bottom:32px;display:flex;align-items:center;justify-content:center;gap:8px}
-    .welcome-logo::before,.welcome-logo::after{content:'';width:24px;height:1px;background:linear-gradient(90deg,transparent,var(--accent2))}
-    .welcome-logo::after{background:linear-gradient(90deg,var(--accent2),transparent)}
-    .welcome-title{font-size:36px;font-weight:900;letter-spacing:-.02em;margin-bottom:12px;background:linear-gradient(135deg,#fff 0%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .welcome-desc{color:var(--text2);font-size:15px;margin-bottom:36px;line-height:1.6}
-    .input{width:100%;padding:14px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:15px;font-family:inherit;outline:none;transition:all .2s}
-    .input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
-    .input::placeholder{color:var(--text3)}
-    .input.code{letter-spacing:6px;font-size:18px;font-weight:700;text-transform:uppercase;text-align:center}
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 28px;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
-    .btn:disabled{opacity:.4;cursor:not-allowed}
-    .btn-primary{background:linear-gradient(135deg,var(--accent),#9333ea);color:#fff}
-    .btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px var(--accent-glow)}
-    .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
-    .btn-secondary:hover:not(:disabled){border-color:var(--border-hover);background:var(--surface3)}
-    .btn-danger{background:var(--danger);color:#fff}
+    /* ----- WELCOME / HOMEPAGE ----- */
+    #welcome{min-height:100vh;background:var(--cream-bg);color:var(--cream-text);padding:32px 24px 64px;display:flex;flex-direction:column}
+    .welcome-nav{display:flex;justify-content:space-between;align-items:center;margin:0 auto;width:100%;max-width:1100px;margin-bottom:48px}
+    .welcome-nav .brand{font-size:18px;font-weight:800;letter-spacing:-.01em}
+    .welcome-nav .brand-emoji{margin-right:6px}
+    .welcome-main{margin:0 auto;width:100%;max-width:1100px;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;flex:1}
+    @media(max-width:880px){.welcome-main{grid-template-columns:1fr;gap:40px}}
+    .hero h1{font-size:60px;font-weight:900;letter-spacing:-.03em;line-height:1.05;margin-bottom:20px;color:var(--cream-text)}
+    @media(max-width:640px){.hero h1{font-size:42px}}
+    .hero .lead{font-size:18px;line-height:1.55;color:var(--cream-text2);margin-bottom:32px;max-width:520px}
+    .hero-cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+    .privacy-note{font-size:13px;color:var(--cream-text2);display:inline-flex;align-items:center;gap:6px}
+
+    /* Sample card */
+    .sample-card{background:var(--cream-surface);border:1px solid var(--cream-border);border-radius:20px;padding:24px;box-shadow:var(--cream-shadow)}
+    .sample-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--cream-border)}
+    .sample-title{font-size:18px;font-weight:700}
+    .sample-meta{font-size:12px;color:var(--cream-text2)}
+    .sample-map{height:220px;background:#f1ede4;border-radius:12px;position:relative;overflow:hidden;margin-bottom:16px}
+    .sample-map svg{width:100%;height:100%;display:block}
+    .sample-pin{position:absolute;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.2);transform:translate(-50%,-100%)}
+    .sample-pin::after{content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid currentColor}
+    .sample-list{display:flex;flex-direction:column;gap:8px}
+    .sample-row{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;font-size:14px}
+    .sample-row strong{font-weight:600}
+    .avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:13px;flex-shrink:0}
+    .avatar.coral{background:var(--coral)}
+    .avatar.blue{background:var(--blue)}
+    .avatar.green{background:var(--green)}
+    .avatar.purple{background:var(--accent)}
+    .avatar.gold{background:var(--gold);color:#3a2e00}
+    .avatar.pink{background:var(--pink)}
+
+    /* Buttons (cream theme) */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;border:1px solid transparent;transition:transform .1s,background .15s,box-shadow .15s;white-space:nowrap}
+    .btn:active{transform:scale(.97)}
+    .btn-lg{padding:14px 22px;font-size:15px;border-radius:12px}
+    .btn-primary{background:var(--accent);color:white;border-color:var(--accent)}
+    .btn-primary:hover{background:#6d28d9}
+    .btn-secondary{background:var(--cream-surface);color:var(--cream-text);border-color:var(--cream-border)}
+    .btn-secondary:hover{background:#f4f0e7}
+    .btn-ghost{background:transparent;color:var(--cream-text);border-color:var(--cream-border)}
+    .btn-ghost:hover{background:rgba(0,0,0,.04)}
+    .btn-danger{background:var(--danger);color:white;border-color:var(--danger)}
+    .btn-danger:hover{background:#dc2640}
+    .btn-icon{width:38px;height:38px;padding:0;font-size:18px}
     .btn-full{width:100%}
-    .form-group{margin-bottom:20px;text-align:left}
-    .form-label{display:block;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
-    .form-label .opt{color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0}
-    .divider{display:flex;align-items:center;gap:16px;margin:28px 0}
-    .divider-line{flex:1;height:1px;background:var(--border)}
-    .divider-text{color:var(--text3);font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:1px}
-    .join-row{display:flex;gap:10px}
-    .join-row .input{flex:1}
-    .error-msg{margin-top:16px;padding:12px 16px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.2);border-radius:var(--radius-sm);color:#fda4af;font-size:13px;display:none}
-    .error-msg.show{display:block}
 
-    /* Header */
-    #header{position:fixed;top:0;left:0;right:0;height:60px;padding:0 20px;background:rgba(10,10,15,.8);backdrop-filter:blur(24px) saturate(1.2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;z-index:1000}
-    .header-left{display:flex;align-items:center;gap:10px}
-    .header-right{display:flex;align-items:center;gap:8px}
-    .logo{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:800;letter-spacing:-.01em}
-    .logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent-glow)}
-    .logo-name{color:var(--text2);font-weight:500;font-size:14px;margin-left:4px;padding-left:12px;border-left:1px solid var(--border)}
-    .header-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s;border:1px solid var(--border);background:var(--surface);color:var(--text2)}
-    .header-btn:hover{border-color:var(--border-hover);color:var(--text);background:var(--surface2)}
-    .share-btn .code{color:var(--accent2);font-weight:700;letter-spacing:2px;font-size:12px}
-    .add-btn{background:var(--accent);border-color:var(--accent);color:#fff}
-    .add-btn:hover{background:#9333ea;border-color:#9333ea;box-shadow:0 4px 16px var(--accent-glow)}
-    .icon-btn{width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;font-size:16px}
+    /* Dark-themed buttons (used in atlas view + modals) */
+    .atlas-mode .btn-secondary{background:var(--surface2);color:var(--text);border-color:var(--border)}
+    .atlas-mode .btn-secondary:hover{background:var(--surface3);border-color:var(--border-hover)}
+    .atlas-mode .btn-ghost{background:transparent;color:var(--text2);border-color:var(--border)}
+    .atlas-mode .btn-ghost:hover{background:var(--surface2);color:var(--text)}
+    .atlas-mode .btn-icon{color:var(--text2)}
+    .atlas-mode .btn-icon:hover{background:var(--surface2);color:var(--text)}
 
-    /* Map */
-    #map{position:fixed;top:60px;left:0;right:0;bottom:0;z-index:1}
-    .leaflet-control-attribution{background:rgba(10,10,15,.85)!important;color:var(--text3)!important;font-size:10px!important;backdrop-filter:blur(8px)}
-    .leaflet-control-attribution a{color:var(--text2)!important}
-    .leaflet-control-zoom{border:none!important;border-radius:var(--radius-sm)!important;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.4)!important}
-    .leaflet-control-zoom a{background:var(--surface)!important;color:var(--text)!important;border:none!important;border-bottom:1px solid var(--border)!important;width:36px!important;height:36px!important;line-height:36px!important;font-size:16px!important}
-    .leaflet-control-zoom a:last-child{border-bottom:none!important}
-    .leaflet-control-zoom a:hover{background:var(--surface2)!important}
+    /* ----- ATLAS / MAP VIEW ----- */
+    #atlas{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+    .atlas-header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface);z-index:20;position:relative}
+    .atlas-title-block{min-width:0;flex:1}
+    .map-name{font-size:18px;font-weight:800;letter-spacing:-.01em;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .owner-name{font-size:12px;color:var(--text2);margin-top:2px}
+    .owner-name strong{color:var(--text)}
+    .atlas-actions{display:flex;gap:8px;align-items:center}
+    #user-menu{position:absolute;top:60px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:6px;min-width:200px;box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:50;display:none}
+    #user-menu.show{display:block}
+    .menu-item{display:flex;width:100%;align-items:center;gap:8px;padding:10px 12px;border:none;background:transparent;color:var(--text);font-size:14px;border-radius:8px;text-align:left}
+    .menu-item:hover{background:var(--surface2)}
 
-    /* Map Pins */
-    .map-pin-wrap{position:relative}
-    .map-pin{display:flex;align-items:center;justify-content:center;border-radius:50%;font-weight:800;color:#fff;cursor:pointer;transition:all .2s;border:2.5px solid rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(0,0,0,.3),0 0 0 0 rgba(255,255,255,0)}
-    .map-pin:hover{transform:scale(1.2);box-shadow:0 4px 16px rgba(0,0,0,.4),0 0 0 3px rgba(255,255,255,.15)}
-    .map-pin.selected{border-color:#fff;box-shadow:0 0 0 4px rgba(124,58,237,.4),0 4px 20px rgba(0,0,0,.5)}
-    .map-pin img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-    .map-pin.new-pin{animation:pinDrop .5s cubic-bezier(.34,1.56,.64,1) forwards,pinGlow 1.5s ease-out .5s}
-    .pin-ripple{position:absolute;top:50%;left:50%;width:100%;height:100%;border-radius:50%;transform:translate(-50%,-50%);background:var(--pin-color,var(--accent));opacity:0;animation:ripple 1s ease-out forwards;pointer-events:none}
+    .atlas-body{display:grid;grid-template-columns:1fr 360px;flex:1;min-height:0}
+    @media(max-width:900px){.atlas-body{grid-template-columns:1fr;grid-template-rows:55vh 1fr}}
+    .map-area{position:relative;background:var(--surface)}
+    #map{position:absolute;inset:0;background:var(--bg)}
+    .leaflet-container{background:var(--bg) !important}
+    .leaflet-control-attribution{background:rgba(18,18,26,.7) !important;color:var(--text3) !important;font-size:10px !important}
+    .leaflet-control-zoom a{background:var(--surface) !important;color:var(--text) !important;border-color:var(--border) !important}
+    .leaflet-control-zoom a:hover{background:var(--surface2) !important}
 
-    /* Pin Tooltip */
-    .pin-tooltip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(4px);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;white-space:nowrap;opacity:0;pointer-events:none;transition:all .15s ease-out;z-index:1000;box-shadow:0 8px 24px rgba(0,0,0,.4)}
-    .pin-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--surface)}
-    .map-pin-wrap:hover .pin-tooltip{opacity:1;transform:translateX(-50%) translateY(0)}
-    .pin-tooltip-name{font-size:13px;font-weight:700;color:var(--text)}
-    .pin-tooltip-city{font-size:11px;color:var(--text2);margin-top:1px}
+    .people-panel{background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+    @media(max-width:900px){.people-panel{border-left:none;border-top:1px solid var(--border)}}
+    .stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:14px}
+    .stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center}
+    .stat-num{font-size:22px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+    .stat-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;font-weight:600}
+    .search-box{padding:0 14px 12px}
+    .search-box input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:14px;font-family:inherit}
+    .search-box input:focus{outline:none;border-color:var(--accent2)}
+    #people-content{flex:1;overflow-y:auto;padding:0 14px 18px}
 
-    /* Color Picker */
-    .color-picker{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px}
-    .color-swatch{width:36px;height:36px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .2s;position:relative}
-    .color-swatch:hover{transform:scale(1.15);border-color:rgba(255,255,255,.3)}
-    .color-swatch.active{border-color:#fff;transform:scale(1.1)}
-    .color-swatch.active::after{content:'';position:absolute;inset:-1px;border-radius:50%;border:2px solid rgba(255,255,255,.5)}
+    /* Empty state checklist */
+    .empty-checklist{padding:8px}
+    .empty-title{font-size:18px;font-weight:700;margin-bottom:6px;color:var(--text)}
+    .empty-sub{font-size:13px;color:var(--text2);margin-bottom:18px}
+    .check-item{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--surface2);transition:border-color .15s}
+    .check-item.done{opacity:.6}
+    .check-item.done .check-circle{background:var(--success);border-color:var(--success);color:white}
+    .check-item.done .check-circle::after{content:'✓';font-size:14px}
+    .check-circle{width:24px;height:24px;border-radius:50%;border:2px solid var(--text3);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:transparent}
+    .check-text{font-size:14px;font-weight:500;flex:1}
+    .check-action{margin-top:14px}
+    .check-action button{width:100%}
+    .empty-foot{font-size:11px;color:var(--text3);margin-top:18px;text-align:center;line-height:1.5}
 
-    /* Stats Bar */
-    #stats{position:fixed;bottom:20px;left:20px;display:flex;gap:2px;background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:100px;padding:4px;font-size:12px;z-index:100}
-    .stat{display:flex;align-items:center;gap:5px;padding:8px 14px;border-radius:100px}
-    .stat-val{font-weight:800;color:var(--accent2);font-size:14px}
-    .stat-label{color:var(--text2);font-weight:500}
+    /* Friend list grouped by city */
+    .city-group{margin-bottom:18px}
+    .city-header{display:flex;align-items:baseline;gap:8px;padding:6px 4px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700}
+    .city-header .flag{font-size:16px}
+    .city-header .city-name{color:var(--text2);font-size:12px;letter-spacing:.04em}
+    .city-header .city-count{color:var(--text3);margin-left:auto;font-size:10px}
+    .friend-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:background .12s,border-color .12s}
+    .friend-card:hover{background:var(--surface2);border-color:var(--border)}
+    .friend-card.highlighted{background:var(--surface2);border-color:var(--accent2)}
+    .friend-card .avatar{width:36px;height:36px;font-size:14px}
+    .friend-name{font-size:14px;font-weight:600;color:var(--text)}
+    .friend-meta{font-size:12px;color:var(--text2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+    .friend-time{font-size:10px;color:var(--text3);margin-left:auto;flex-shrink:0}
 
-    /* Empty State */
-    #empty{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:100;display:none;animation:fadeIn .6s ease-out}
-    #empty.show{display:block}
-    .empty-icon{width:80px;height:80px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 20px;animation:float 3s ease-in-out infinite}
-    .empty-title{font-size:22px;font-weight:800;margin-bottom:8px;letter-spacing:-.01em}
-    .empty-desc{color:var(--text2);font-size:14px;margin-bottom:24px;max-width:260px;margin-left:auto;margin-right:auto}
-    .empty-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:12px 24px;border-radius:100px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s}
-    .empty-btn:hover{border-color:var(--accent);color:var(--accent2);box-shadow:0 0 20px var(--accent-glow)}
-
-    /* Sidebar */
-    #sidebar{position:fixed;top:76px;left:16px;width:210px;max-height:calc(100vh - 150px);display:flex;flex-direction:column;gap:6px;overflow-y:auto;z-index:100;scrollbar-width:none}
-    #sidebar::-webkit-scrollbar{display:none}
-    .friend-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;animation:fadeIn .3s ease-out}
-    .friend-item:hover{background:rgba(255,255,255,.06);border-color:var(--border-hover);transform:translateX(3px)}
-    .friend-item.selected{background:rgba(124,58,237,.12);border-color:rgba(124,58,237,.3)}
-    .friend-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;overflow:hidden}
-    .friend-avatar img{width:100%;height:100%;object-fit:cover}
-    .friend-info{flex:1;min-width:0}
-    .friend-name{font-size:13px;font-weight:700;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .friend-city{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-    /* Detail Panel */
-    #detail{position:fixed;bottom:20px;right:20px;width:280px;padding:24px;background:var(--glass);backdrop-filter:blur(24px);border:1px solid var(--glass-border);border-radius:var(--radius-lg);z-index:100;display:none;animation:slideUp .3s ease-out}
-    #detail.show{display:block}
-    .detail-close{position:absolute;top:12px;right:12px;width:28px;height:28px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
-    .detail-close:hover{color:var(--text);border-color:var(--border-hover)}
-    .detail-avatar{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;margin-bottom:14px;overflow:hidden}
-    .detail-avatar img{width:100%;height:100%;object-fit:cover}
-    .detail-name{font-size:18px;font-weight:800;margin-bottom:2px;letter-spacing:-.01em}
-    .detail-city{font-size:13px;color:var(--text2)}
-    .detail-note{margin-top:14px;padding:12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:13px;color:var(--text2);font-style:italic;border-left:2px solid var(--accent)}
-    .detail-meta{margin-top:10px;font-size:11px;color:var(--text3)}
-    .detail-remove{margin-top:14px;background:none;border:none;color:rgba(244,63,94,.6);font-size:12px;cursor:pointer;font-family:inherit;padding:0;display:none;transition:color .2s}
-    .detail-remove.show{display:block}
-    .detail-remove:hover{color:var(--danger)}
+    /* Pin markers (Leaflet) */
+    .pin-marker{display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);transform:scale(0);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+    .pin-marker.loaded{transform:scale(1)}
 
     /* Modals */
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:5000;padding:24px}
-    .modal-overlay.show{display:flex}
-    .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px;max-width:420px;width:100%;position:relative;max-height:90vh;overflow-y:auto;animation:fadeInScale .3s ease-out}
-    .modal-close{position:absolute;top:16px;right:16px;width:36px;height:36px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text3);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
-    .modal-close:hover{color:var(--text);border-color:var(--border-hover)}
-    .modal-icon{font-size:40px;text-align:center;margin-bottom:16px}
-    .modal-title{font-size:22px;font-weight:800;margin-bottom:6px;text-align:center;letter-spacing:-.01em}
-    .modal-desc{color:var(--text2);font-size:14px;text-align:center;margin-bottom:28px}
-
-    /* Share Modal */
-    .share-code{font-size:32px;font-weight:900;letter-spacing:8px;color:var(--accent2);text-align:center;padding:20px;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.15);border-radius:var(--radius);margin-bottom:20px}
-    .share-link{margin-bottom:20px}
-    .share-link-box{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;color:var(--text2);word-break:break-all}
-    .share-link-box .url{flex:1;overflow:hidden;text-overflow:ellipsis}
-    .share-proof{text-align:center;margin-bottom:20px;font-size:13px;color:var(--text2)}
-    .share-proof strong{color:var(--accent2)}
-    .share-actions{display:flex;gap:8px;margin-bottom:12px}
-    .share-actions .btn{flex:1;font-size:14px;padding:12px}
-    .share-channels{display:flex;gap:8px}
-    .share-ch{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text2);transition:all .2s;text-decoration:none}
-    .share-ch:hover{border-color:var(--border-hover);color:var(--text);background:var(--surface3)}
-    .share-ch.sms{border-color:rgba(52,211,153,.2);color:var(--success)}
-    .share-ch.sms:hover{background:rgba(52,211,153,.06)}
-    .share-ch.wa{border-color:rgba(37,211,102,.2);color:#25d366}
-    .share-ch.wa:hover{background:rgba(37,211,102,.06)}
-
-    /* City Dropdown */
-    .city-wrap{position:relative}
-    #city-dropdown{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-radius:var(--radius);max-height:220px;overflow-y:auto;z-index:9999;display:none;box-shadow:0 16px 48px rgba(0,0,0,.5)}
-    #city-dropdown.show{display:block}
-    .dropdown-header{padding:10px 14px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;background:var(--surface2);border-bottom:1px solid var(--border);position:sticky;top:0}
-    .dropdown-item{padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s}
-    .dropdown-item:last-child{border-bottom:none}
-    .dropdown-item:hover{background:rgba(124,58,237,.1)}
-    .dropdown-city{font-size:14px;font-weight:600;margin-bottom:1px}
-    .dropdown-country{font-size:11px;color:var(--text3)}
-    .city-badge{margin-top:10px;padding:10px 14px;background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2);border-radius:var(--radius-sm);color:var(--success);font-size:13px;font-weight:600;display:none}
-    .city-badge.show{display:block}
-    .form-error{padding:12px 16px;background:rgba(244,63,94,.06);border:1px solid rgba(244,63,94,.15);border-radius:var(--radius-sm);color:#fda4af;font-size:13px;margin-bottom:20px;display:none}
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:flex-start;justify-content:center;padding:32px 16px;z-index:100;overflow-y:auto;backdrop-filter:blur(4px)}
+    .overlay.show{display:flex}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:440px;margin:0 auto auto;position:relative}
+    .modal h2{font-size:20px;font-weight:700;margin-bottom:6px;color:var(--text)}
+    .modal .modal-desc{font-size:13px;color:var(--text2);margin-bottom:18px}
+    .modal-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:8px;border:none;background:transparent;color:var(--text2);font-size:18px;display:flex;align-items:center;justify-content:center}
+    .modal-close:hover{background:var(--surface2);color:var(--text)}
+    .form-group{margin-bottom:14px}
+    .form-label{display:block;font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+    .form-label .opt{color:var(--text3);text-transform:none;font-weight:400;letter-spacing:0}
+    .input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:10px;font-size:14px;font-family:inherit}
+    .input:focus{outline:none;border-color:var(--accent2)}
+    .input.code{font-family:'SF Mono','Monaco',monospace;letter-spacing:.15em;text-align:center;text-transform:uppercase;font-weight:700}
+    .form-hint{font-size:11px;color:var(--text3);margin-top:6px}
+    .form-error{background:rgba(244,63,94,.12);color:#fca5a5;border:1px solid rgba(244,63,94,.3);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none}
     .form-error.show{display:block}
+    .modal-actions{display:flex;gap:8px;margin-top:20px}
+    .modal-actions .btn{flex:1}
 
-    /* Confirm */
-    .confirm-btns{display:flex;gap:10px;margin-top:24px}
-    .confirm-btns .btn{flex:1}
+    /* Pin drop modal */
+    .city-wrap{position:relative}
+    #city-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-top:4px;max-height:240px;overflow-y:auto;z-index:10;display:none;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+    #city-dropdown.show{display:block}
+    .city-opt{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:14px}
+    .city-opt:last-child{border-bottom:none}
+    .city-opt:hover,.city-opt.active{background:var(--surface3)}
+    .city-opt .country{color:var(--text3);font-size:12px;margin-left:6px}
+    .city-confirmed{display:flex;align-items:center;gap:6px;color:var(--success);font-size:12px;margin-top:6px;font-weight:600}
+    .color-picker{display:flex;flex-wrap:wrap;gap:8px}
+    .color-dot{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:transform .15s}
+    .color-dot.active{border-color:white}
+    .color-dot:hover{transform:scale(1.12)}
+    .privacy-callout{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text2);display:flex;gap:8px;margin-top:14px;line-height:1.5}
+    .privacy-callout .lock{font-size:14px;flex-shrink:0}
 
-    /* Join CTA */
-    #join-cta{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;padding:12px 12px 12px 24px;background:var(--glass);backdrop-filter:blur(24px);border:1px solid var(--glass-border);border-radius:100px;z-index:200;animation:slideUp .5s ease-out;box-shadow:0 8px 32px rgba(0,0,0,.4)}
-    #join-cta.hidden{display:none}
-    .cta-text{font-size:14px;font-weight:500;color:var(--text2);white-space:nowrap}
-    .cta-text strong{color:var(--accent2);font-weight:700}
-    .cta-btn{padding:10px 22px;background:var(--accent);color:#fff;border:none;border-radius:100px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;white-space:nowrap}
-    .cta-btn:hover{background:#9333ea;box-shadow:0 4px 16px var(--accent-glow)}
+    /* Share modal */
+    .share-code-display{font-family:'SF Mono','Monaco',monospace;font-size:32px;font-weight:800;letter-spacing:.15em;text-align:center;padding:18px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--accent2);margin-bottom:16px}
+    .share-link-display{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:var(--text2);overflow:hidden}
+    .share-link-display .url{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+    .share-message{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;color:var(--text);line-height:1.5;margin-bottom:14px}
+    .share-channels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+    .share-ch{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:500;text-decoration:none}
+    .share-ch:hover{background:var(--surface3);border-color:var(--border-hover)}
+    .share-ch.sms{color:#34d399}
+    .share-ch.wa{color:#22c55e}
+    .share-ch.x{color:var(--text)}
+    .share-ch.email{color:var(--blue)}
 
-    /* Post Drop */
-    #post-drop{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:24px 32px;background:var(--glass);backdrop-filter:blur(24px);border:1px solid var(--glass-border);border-radius:var(--radius-lg);z-index:200;text-align:center;animation:slideUp .5s ease-out;box-shadow:0 8px 32px rgba(0,0,0,.4);display:none}
-    #post-drop.show{display:block}
-    .post-drop-title{font-size:18px;font-weight:800;margin-bottom:4px}
-    .post-drop-desc{color:var(--text2);font-size:13px;margin-bottom:16px}
-    .post-drop-members{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:16px}
-    .post-drop-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;border:2px solid var(--surface);margin-left:-8px}
-    .post-drop-avatar:first-child{margin-left:0}
-    .post-drop-count{font-size:12px;color:var(--text2);margin-left:8px;font-weight:600}
-    .post-drop-invite{font-size:13px;color:var(--accent2);font-weight:600;margin-bottom:16px}
-    .post-drop-actions{display:flex;gap:8px}
-    .post-drop-actions .btn{font-size:13px;padding:10px 18px}
+    /* Detail card */
+    #detail{position:absolute;top:80px;left:20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;width:280px;display:none;z-index:30;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+    #detail.show{display:block}
+    .detail-close{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:16px}
+    .detail-close:hover{background:var(--surface2)}
+    .detail-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .detail-head .avatar{width:40px;height:40px;font-size:16px}
+    .detail-name-block{flex:1;min-width:0}
+    .detail-name{font-size:16px;font-weight:700;color:var(--text)}
+    .detail-city{font-size:12px;color:var(--text2);margin-top:2px}
+    .detail-note{font-size:13px;color:var(--text);background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:10px}
+    .detail-meta{font-size:11px;color:var(--text3);margin-bottom:10px}
+    .detail-remove{width:100%;background:transparent;color:var(--danger);border:1px solid rgba(244,63,94,.3);padding:8px;border-radius:8px;font-size:13px;font-weight:500}
+    .detail-remove:hover{background:rgba(244,63,94,.1)}
 
-    /* Toast */
-    #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(12px);padding:12px 24px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:14px;border-radius:100px;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+    /* Activity & toast */
+    #activity{position:fixed;top:80px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:40;pointer-events:none}
+    .activity-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;min-width:240px;animation:slideIn .35s ease-out;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+    @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+    .activity-item .avatar{width:28px;height:28px;font-size:11px}
+    .activity-text{font-size:13px;color:var(--text)}
+    .activity-text strong{font-weight:600}
+    .activity-time{font-size:11px;color:var(--text3);margin-left:auto}
+    #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;opacity:0;pointer-events:none;transition:transform .25s,opacity .25s;z-index:60;box-shadow:0 8px 32px rgba(0,0,0,.4)}
     #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-    /* Activity Feed */
-    #activity{position:fixed;top:72px;right:16px;display:flex;flex-direction:column;gap:6px;z-index:150;pointer-events:none;max-width:280px}
-    .activity-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:var(--radius-sm);animation:fadeIn .3s ease-out;pointer-events:auto;opacity:0;transition:opacity .3s}
-    .activity-item.show{opacity:1}
-    .activity-item.hide{opacity:0;transform:translateX(20px)}
-    .activity-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
-    .activity-text{font-size:12px;color:var(--text2);line-height:1.4}
-    .activity-text strong{color:var(--text);font-weight:700}
-    .activity-time{color:var(--text3);font-size:11px}
+    /* Post-drop celebration */
+    #post-drop{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:90;backdrop-filter:blur(6px);padding:24px}
+    #post-drop.show{display:flex}
+    .celebrate{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;text-align:center;max-width:400px;width:100%}
+    .celebrate-emoji{font-size:48px;margin-bottom:8px}
+    .celebrate-title{font-size:22px;font-weight:800;color:var(--text);margin-bottom:6px}
+    .celebrate-desc{font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.5}
+    .celebrate-actions{display:flex;flex-direction:column;gap:8px}
 
     /* Confetti */
-    .confetti{position:fixed;pointer-events:none;z-index:9998}
-    .confetti-dot{position:absolute;width:8px;height:8px;border-radius:50%;animation:confettiPop .8s ease-out forwards}
-
-    /* User Menu */
-    #user-menu{position:fixed;top:68px;right:16px;min-width:180px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:6px;z-index:1001;display:none;box-shadow:0 12px 40px rgba(0,0,0,.5);animation:fadeInScale .15s ease-out}
-    #user-menu.show{display:block}
-    .menu-item{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;background:none;border:none;border-radius:8px;color:var(--text2);font-size:13px;font-weight:500;font-family:inherit;text-align:left;cursor:pointer;transition:all .15s}
-    .menu-item:hover{background:var(--surface2);color:var(--text)}
-    .menu-item.danger{color:rgba(244,63,94,.7)}
-    .menu-item.danger:hover{color:var(--danger);background:rgba(244,63,94,.06)}
-    .menu-sep{height:1px;background:var(--border);margin:4px 8px}
-
-    /* Rename inline */
-    .rename-wrap{display:flex;align-items:center;gap:6px}
-    .rename-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;transition:all .15s;line-height:1}
-    .rename-btn:hover{color:var(--accent2);background:rgba(124,58,237,.1)}
-
-    /* Responsive */
-    @media(max-width:768px){
-      #header{height:52px;padding:0 14px}
-      #map{top:52px}
-      .logo span:not(.logo-dot){font-size:14px}
-      .logo-name{display:none}
-      .share-btn .code{display:none}
-      .header-btn{padding:7px 10px;font-size:12px}
-      #sidebar{top:64px;left:10px;width:160px;max-height:calc(100vh - 130px)}
-      .friend-item{padding:8px 10px}
-      .friend-avatar{width:30px;height:30px;font-size:11px}
-      .friend-name{font-size:12px}
-      .friend-city{font-size:10px}
-      #detail{left:10px;right:10px;bottom:70px;width:auto}
-      #stats{left:10px;bottom:12px;padding:2px;font-size:11px}
-      .stat{padding:6px 10px}
-      .welcome-card{padding:32px 24px}
-      .welcome-title{font-size:28px}
-      .modal{padding:28px 24px}
-      .share-code{font-size:24px;letter-spacing:5px}
-      #join-cta{bottom:16px;padding:10px 10px 10px 18px;gap:10px;left:12px;right:12px;transform:none}
-      .cta-text{font-size:13px}
-      #post-drop{bottom:16px;left:12px;right:12px;transform:none;padding:20px 24px}
-      .post-drop-actions{flex-direction:column}
-      #activity{top:60px;right:10px;max-width:220px}
-    }
-    @media(max-width:480px){#sidebar{display:none}}
+    .confetti{position:fixed;inset:0;pointer-events:none;z-index:80;overflow:hidden}
+    .confetti-piece{position:absolute;width:8px;height:8px;background:var(--accent);animation:confetti-fall 2s ease-in forwards}
+    @keyframes confetti-fall{0%{transform:translateY(-10vh) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
   </style>
 </head>
 <body>
-<div id="loading"><div class="loading-icon">🌐</div><div class="loading-bar"></div></div>
+<div id="loading"><div class="loading-icon">🌍</div><div class="loading-bar"></div></div>
 
+<!-- ============ WELCOME / HOMEPAGE ============ -->
 <div id="welcome" class="hidden">
-  <div class="welcome-card">
-    <div class="welcome-logo">Friend Atlas</div>
-    <h1 class="welcome-title">Where are your people?</h1>
-    <p class="welcome-desc">Create a shared map, invite your friends, and see where everyone is across the world.</p>
-    <div class="form-group"><label class="form-label">Your Name</label><input type="text" class="input" id="creator-name" placeholder="Enter your name"></div>
-    <button class="btn btn-primary btn-full" id="create-btn">Create My Atlas</button>
-    <div class="divider"><div class="divider-line"></div><span class="divider-text">or join</span><div class="divider-line"></div></div>
-    <div class="join-row">
-      <input type="text" class="input code" id="join-code" placeholder="CODE" maxlength="6" autocomplete="off">
-      <button class="btn btn-secondary" id="join-btn">Join</button>
+  <header class="welcome-nav">
+    <span class="brand"><span class="brand-emoji">🌍</span>Friend Atlas</span>
+  </header>
+  <main class="welcome-main">
+    <div class="hero">
+      <h1>Where are your people?</h1>
+      <p class="lead">Create a private shared map for your friends, classmates, family, or travel crew. Create a map, share a link, and watch everyone drop their pin.</p>
+      <div class="hero-cta">
+        <button class="btn btn-primary btn-lg" id="hero-create">Create My Friend Map</button>
+        <button class="btn btn-ghost btn-lg" id="hero-join">Join a Map</button>
+      </div>
+      <div class="privacy-note">🔒 Private by link. City-level only. No exact addresses.</div>
     </div>
-    <div class="error-msg" id="welcome-error"></div>
-  </div>
-</div>
-
-<header id="header">
-  <div class="header-left">
-    <div class="logo">
-      <span class="logo-dot"></span>
-      <span id="atlas-title">Friend Atlas</span>
-      <span class="logo-name" id="atlas-owner-label"></span>
+    <div class="sample-card">
+      <div class="sample-header">
+        <div>
+          <div class="sample-title">Jesse's Friend Atlas</div>
+          <div class="sample-meta">4 friends · 4 cities · 3 countries</div>
+        </div>
+      </div>
+      <div class="sample-map" id="sample-map">
+        <!-- World map SVG with 4 pins -->
+        <svg viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg">
+          <!-- Simple stylized continents (flat shapes for visual texture) -->
+          <g fill="#dcd4c2" opacity=".7">
+            <path d="M50 60 Q70 40 110 50 L130 70 Q145 80 140 100 L120 115 Q90 120 75 110 L60 90 Z"/>
+            <path d="M150 70 Q180 50 220 60 L240 80 Q230 100 210 105 L180 100 Q160 90 150 80 Z"/>
+            <path d="M260 60 Q300 45 340 55 L370 75 Q380 100 370 120 L340 130 Q300 130 270 115 L255 95 Z"/>
+            <path d="M390 65 Q430 50 470 65 L490 85 Q485 110 460 120 L420 120 Q395 105 385 85 Z"/>
+            <path d="M490 90 Q525 80 555 95 L560 120 Q545 140 510 140 L490 125 Z"/>
+            <path d="M270 145 Q295 140 320 155 L325 180 Q310 195 290 192 L275 175 Z"/>
+            <path d="M150 130 Q180 125 200 145 L195 165 Q175 175 155 160 Z"/>
+          </g>
+        </svg>
+        <!-- Sample pins positioned on the SVG -->
+        <div class="sample-pin" style="background:var(--coral);color:var(--coral);left:22%;top:42%">S</div>
+        <div class="sample-pin" style="background:var(--blue);color:var(--blue);left:48%;top:38%">M</div>
+        <div class="sample-pin" style="background:var(--green);color:var(--green);left:30%;top:60%">V</div>
+        <div class="sample-pin" style="background:var(--accent);color:var(--accent);left:43%;top:35%">A</div>
+      </div>
+      <div class="sample-list">
+        <div class="sample-row"><div class="avatar coral">S</div><div><strong>Sarah</strong> · 🇺🇸 New York</div></div>
+        <div class="sample-row"><div class="avatar blue">M</div><div><strong>Marc</strong> · 🇩🇪 Berlin</div></div>
+        <div class="sample-row"><div class="avatar green">V</div><div><strong>Vince</strong> · 🇺🇸 Miami</div></div>
+        <div class="sample-row"><div class="avatar purple">A</div><div><strong>Anna</strong> · 🇬🇧 London</div></div>
+      </div>
     </div>
+  </main>
+</div>
+
+<!-- ============ ATLAS / MAP VIEW ============ -->
+<div id="atlas" class="hidden atlas-mode">
+  <header class="atlas-header">
+    <div class="atlas-title-block">
+      <div class="map-name" id="map-name-display">Friend Atlas</div>
+      <div class="owner-name">by <strong id="owner-name-display">someone</strong> · <span id="header-code-display">------</span></div>
+    </div>
+    <div class="atlas-actions">
+      <button class="btn btn-secondary" id="invite-btn">📤 Invite</button>
+      <button class="btn btn-primary" id="add-btn">+ Add Yourself</button>
+      <button class="btn btn-icon btn-ghost" id="menu-btn" aria-label="Menu">⋯</button>
+    </div>
+    <div id="user-menu">
+      <button class="menu-item" id="menu-rename-map">✏️ Rename Map</button>
+      <button class="menu-item" id="menu-rename-owner">👤 Change Your Name</button>
+      <button class="menu-item" id="menu-switch">🔄 Switch Atlas</button>
+      <button class="menu-item" id="menu-export">📁 Export Data</button>
+    </div>
+  </header>
+
+  <div class="atlas-body">
+    <div class="map-area">
+      <div id="map"></div>
+      <div id="detail">
+        <button class="detail-close" id="detail-close">&times;</button>
+        <div class="detail-head">
+          <div class="avatar" id="detail-avatar">?</div>
+          <div class="detail-name-block">
+            <div class="detail-name" id="detail-name"></div>
+            <div class="detail-city" id="detail-city"></div>
+          </div>
+        </div>
+        <div class="detail-note" id="detail-note"></div>
+        <div class="detail-meta" id="detail-meta"></div>
+        <button class="detail-remove" id="detail-remove">Remove from map</button>
+      </div>
+    </div>
+    <aside class="people-panel">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-num" id="stat-friends">0</div><div class="stat-label">Friends</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-cities">0</div><div class="stat-label">Cities</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-countries">0</div><div class="stat-label">Countries</div></div>
+      </div>
+      <div class="search-box">
+        <input id="search" placeholder="Search a city or friend" autocomplete="off">
+      </div>
+      <div id="people-content"></div>
+    </aside>
   </div>
-  <div class="header-right">
-    <button class="header-btn share-btn" id="share-btn">Share <span class="code" id="header-code">------</span></button>
-    <button class="header-btn add-btn" id="add-btn">+ Add Yourself</button>
-    <button class="header-btn icon-btn" id="user-btn">···</button>
-  </div>
-</header>
-
-<div id="user-menu">
-  <button class="menu-item" id="menu-rename">✏️ Rename Atlas</button>
-  <button class="menu-item" id="menu-switch">🔄 Switch Atlas</button>
-  <button class="menu-item" id="menu-export">📁 Export Data</button>
 </div>
 
-<div id="map"></div>
-
-<div id="stats">
-  <div class="stat"><span class="stat-val" id="stat-friends">0</span><span class="stat-label">friends</span></div>
-  <div class="stat"><span class="stat-val" id="stat-cities">0</span><span class="stat-label">cities</span></div>
-  <div class="stat"><span class="stat-val" id="stat-countries">0</span><span class="stat-label">countries</span></div>
-</div>
-
-<div id="empty">
-  <div class="empty-icon">📍</div>
-  <h2 class="empty-title">No pins yet</h2>
-  <p class="empty-desc">Share your atlas and let friends drop their pins on your map</p>
-  <button class="empty-btn" id="empty-share-btn">Share Atlas</button>
-</div>
-
-<div id="join-cta" class="hidden">
-  <span class="cta-text">Drop your pin on <strong id="cta-owner"></strong>'s map <span id="cta-count"></span></span>
-  <button class="cta-btn" id="cta-btn">Add Yourself</button>
-</div>
-
-<div id="post-drop">
-  <div class="post-drop-title">You're on the map! 🎉</div>
-  <div class="post-drop-desc" id="post-drop-desc">Your friends can see where you are</div>
-  <div class="post-drop-members" id="post-drop-members"></div>
-  <div class="post-drop-invite" id="post-drop-invite"></div>
-  <div class="post-drop-actions">
-    <button class="btn btn-primary" id="post-share-btn">Invite a friend</button>
-    <button class="btn btn-secondary" id="post-create-btn">Create your own</button>
-  </div>
-</div>
-
-<div id="activity"></div>
-<div id="sidebar"></div>
-
-<div id="detail">
-  <button class="detail-close" id="detail-close">&times;</button>
-  <div class="detail-avatar" id="detail-avatar"></div>
-  <div class="detail-name" id="detail-name"></div>
-  <div class="detail-city" id="detail-city"></div>
-  <div class="detail-note" id="detail-note"></div>
-  <div class="detail-meta" id="detail-meta"></div>
-  <button class="detail-remove" id="detail-remove">Remove from map</button>
-</div>
-
-<div class="modal-overlay" id="share-modal">
+<!-- ============ MODALS ============ -->
+<div class="overlay" id="create-modal">
   <div class="modal">
-    <button class="modal-close" id="share-close">&times;</button>
-    <div class="modal-icon">🔗</div>
-    <h2 class="modal-title">Share Your Atlas</h2>
-    <p class="modal-desc">Send this link to friends so they can drop their pin</p>
-    <div class="share-proof" id="share-proof"></div>
-    <div class="share-code" id="share-code">------</div>
-    <div class="share-link"><div class="share-link-box"><span class="url" id="share-url"></span></div></div>
-    <div class="share-actions">
-      <button class="btn btn-primary" id="copy-link-btn">Copy Link</button>
-      <button class="btn btn-secondary" id="copy-text-btn">Copy Message</button>
+    <button class="modal-close" data-close="create-modal">&times;</button>
+    <h2>Create your map</h2>
+    <p class="modal-desc">You'll get a shareable link and code. Friends drop their pins; you watch the map fill up.</p>
+    <div class="form-error" id="create-error"></div>
+    <div class="form-group">
+      <label class="form-label">Your Name</label>
+      <input type="text" class="input" id="create-name" placeholder="Jesse">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Map Name <span class="opt">(optional)</span></label>
+      <input type="text" class="input" id="create-mapname" placeholder="Jesse's Friend Atlas" maxlength="120">
+      <div class="form-hint">Leave blank for default. Try: "CBS Summer Map", "Europe Trip 2026", "Family Map".</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close="create-modal">Cancel</button>
+      <button class="btn btn-primary" id="create-submit">Create Map</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="join-modal">
+  <div class="modal" style="max-width:380px">
+    <button class="modal-close" data-close="join-modal">&times;</button>
+    <h2>Join a map</h2>
+    <p class="modal-desc">Got a 6-letter code from a friend? Enter it here.</p>
+    <div class="form-error" id="join-error"></div>
+    <div class="form-group">
+      <label class="form-label">Atlas Code</label>
+      <input type="text" class="input code" id="join-code" placeholder="ABCDEF" maxlength="6" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close="join-modal">Cancel</button>
+      <button class="btn btn-primary" id="join-submit">Join</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="add-modal">
+  <div class="modal">
+    <button class="modal-close" data-close="add-modal">&times;</button>
+    <h2>Drop your pin</h2>
+    <p class="modal-desc" id="add-subtitle">Show everyone where you are right now.</p>
+    <div class="form-error" id="add-error"></div>
+    <div class="form-group">
+      <label class="form-label">Your Name</label>
+      <input type="text" class="input" id="add-name" placeholder="Enter your name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">City</label>
+      <div class="city-wrap">
+        <input type="text" class="input" id="add-city" placeholder="Start typing a city..." autocomplete="off">
+        <div id="city-dropdown"></div>
+      </div>
+      <div class="city-confirmed" id="city-confirmed" style="display:none">✓ <span id="city-confirmed-name"></span></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Note <span class="opt">(optional)</span></label>
+      <input type="text" class="input" id="add-note" placeholder="Here for school, moving in July, here until August..." maxlength="120">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Pin Color</label>
+      <div class="color-picker" id="color-picker"></div>
+    </div>
+    <div class="privacy-callout">
+      <span class="lock">🔒</span>
+      <span>City-level only. No exact addresses. You can remove your own pin anytime from this same browser.</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close="add-modal">Cancel</button>
+      <button class="btn btn-primary" id="add-submit">Drop My Pin</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="share-modal">
+  <div class="modal">
+    <button class="modal-close" data-close="share-modal">&times;</button>
+    <h2>Invite friends</h2>
+    <p class="modal-desc">Send this to your people so they can drop their pins.</p>
+    <div class="share-code-display" id="share-code-display">------</div>
+    <div class="share-link-display"><span class="url" id="share-url-display"></span></div>
+    <div class="share-message" id="share-message-text"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="copy-link-btn">📋 Copy Link</button>
+      <button class="btn btn-primary" id="copy-msg-btn">✉️ Copy Message</button>
     </div>
     <div class="share-channels">
-      <a class="share-ch sms" id="share-sms">💬 iMessage</a>
-      <a class="share-ch wa" id="share-wa">💬 WhatsApp</a>
+      <a class="share-ch sms" id="share-sms" href="#">💬 iMessage / SMS</a>
+      <a class="share-ch wa" id="share-wa" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
+      <a class="share-ch email" id="share-email" href="#">✉️ Email</a>
+      <a class="share-ch x" id="share-native" href="#">📤 More…</a>
+    </div>
+    <div class="privacy-callout" style="margin-top:14px">
+      <span class="lock">🔒</span>
+      <span>Anyone with the link can join. They can only see city-level pins. Each friend can remove their own pin anytime.</span>
     </div>
   </div>
 </div>
 
-<div class="modal-overlay" id="add-modal">
-  <div class="modal">
-    <button class="modal-close" id="add-close">&times;</button>
-    <h2 class="modal-title">Drop Your Pin</h2>
-    <p class="modal-desc" id="add-subtitle">Add yourself to the map</p>
-    <div class="form-error" id="add-error"></div>
-    <div class="form-group"><label class="form-label">Your Name</label><input type="text" class="input" id="add-name" placeholder="Enter your name"></div>
-    <div class="form-group"><label class="form-label">City</label><div class="city-wrap"><input type="text" class="input" id="add-city" placeholder="Start typing a city..." autocomplete="off"><div id="city-dropdown"></div></div><div class="city-badge" id="city-badge"></div></div>
-    <div class="form-group"><label class="form-label">Note <span class="opt">(optional)</span></label><input type="text" class="input" id="add-note" placeholder="e.g. Always down for coffee"></div>
-    <div class="form-group"><label class="form-label">Pin Color</label><div class="color-picker" id="color-picker"></div></div>
-    <button class="btn btn-primary btn-full" id="add-submit">Drop My Pin</button>
+<div class="overlay" id="rename-map-modal">
+  <div class="modal" style="max-width:380px">
+    <button class="modal-close" data-close="rename-map-modal">&times;</button>
+    <h2>Rename map</h2>
+    <p class="modal-desc">What should this atlas be called?</p>
+    <div class="form-error" id="rename-map-error"></div>
+    <div class="form-group">
+      <label class="form-label">Map Name</label>
+      <input type="text" class="input" id="rename-map-input" placeholder="Map name" maxlength="120">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close="rename-map-modal">Cancel</button>
+      <button class="btn btn-primary" id="rename-map-submit">Save</button>
+    </div>
   </div>
 </div>
 
-<div class="modal-overlay" id="rename-modal">
-  <div class="modal" style="max-width:360px">
-    <button class="modal-close" id="rename-close">&times;</button>
-    <h2 class="modal-title">Rename Atlas</h2>
-    <p class="modal-desc">Update the name shown on your atlas</p>
-    <div class="form-group"><label class="form-label">Name</label><input type="text" class="input" id="rename-input" placeholder="Your name"></div>
-    <button class="btn btn-primary btn-full" id="rename-submit">Save</button>
+<div class="overlay" id="rename-owner-modal">
+  <div class="modal" style="max-width:380px">
+    <button class="modal-close" data-close="rename-owner-modal">&times;</button>
+    <h2>Change your name</h2>
+    <p class="modal-desc">This is the "by ___" shown on your atlas.</p>
+    <div class="form-error" id="rename-owner-error"></div>
+    <div class="form-group">
+      <label class="form-label">Your Name</label>
+      <input type="text" class="input" id="rename-owner-input" placeholder="Your name" maxlength="100">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close="rename-owner-modal">Cancel</button>
+      <button class="btn btn-primary" id="rename-owner-submit">Save</button>
+    </div>
   </div>
 </div>
 
-<div class="modal-overlay" id="confirm-modal">
+<div class="overlay" id="confirm-modal">
   <div class="modal" style="max-width:340px;text-align:center">
-    <div class="modal-icon">🗑️</div>
     <p style="font-size:16px;margin-bottom:0">Remove <strong id="confirm-name"></strong> from the map?</p>
-    <div class="confirm-btns"><button class="btn btn-secondary" id="confirm-cancel">Cancel</button><button class="btn btn-danger" id="confirm-yes">Remove</button></div>
+    <p style="font-size:12px;color:var(--text2);margin-top:8px">This can't be undone.</p>
+    <div class="modal-actions" style="margin-top:18px">
+      <button class="btn btn-ghost" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-danger" id="confirm-yes">Remove</button>
+    </div>
   </div>
 </div>
 
+<!-- Post-drop celebration -->
+<div id="post-drop">
+  <div class="celebrate">
+    <div class="celebrate-emoji">🎉</div>
+    <div class="celebrate-title" id="celebrate-title">You're on the map!</div>
+    <div class="celebrate-desc" id="celebrate-desc">Now send the link to a few friends.</div>
+    <div class="celebrate-actions">
+      <button class="btn btn-primary" id="post-share-btn">📤 Invite Friends</button>
+      <button class="btn btn-ghost" id="post-close-btn">Keep exploring</button>
+    </div>
+  </div>
+</div>
+
+<!-- Activity feed (top-right of atlas) -->
+<div id="activity"></div>
+
+<!-- Toast -->
 <div id="toast"></div>
+
+<!-- Confetti container -->
+<div class="confetti hidden" id="confetti"></div>
 
 <script>
 const CITIES=[["New York City","USA",40.7128,-74.006],["Los Angeles","USA",34.0522,-118.2437],["Chicago","USA",41.8781,-87.6298],["Houston","USA",29.7604,-95.3698],["Phoenix","USA",33.4484,-112.074],["Philadelphia","USA",39.9526,-75.1652],["San Antonio","USA",29.4241,-98.4936],["San Diego","USA",32.7157,-117.1611],["Dallas","USA",32.7767,-96.797],["San Francisco","USA",37.7749,-122.4194],["Austin","USA",30.2672,-97.7431],["Seattle","USA",47.6062,-122.3321],["Denver","USA",39.7392,-104.9903],["Washington DC","USA",38.9072,-77.0369],["Boston","USA",42.3601,-71.0589],["Nashville","USA",36.1627,-86.7816],["Portland","USA",45.5152,-122.6784],["Las Vegas","USA",36.1699,-115.1398],["Atlanta","USA",33.749,-84.388],["Miami","USA",25.7617,-80.1918],["New Orleans","USA",29.9511,-90.0715],["Honolulu","USA",21.3069,-157.8583],["Charlotte","USA",35.2271,-80.8431],["Minneapolis","USA",44.9778,-93.265],["Detroit","USA",42.3314,-83.0458],["Salt Lake City","USA",40.7608,-111.891],["Raleigh","USA",35.7796,-78.6382],["Tampa","USA",27.9506,-82.4572],["Pittsburgh","USA",40.4406,-79.9959],["Cincinnati","USA",39.1031,-84.512],["Kansas City","USA",39.0997,-94.5786],["Indianapolis","USA",39.7684,-86.1581],["Columbus","USA",39.9612,-82.9988],["San Juan","USA",18.4655,-66.1057],["Toronto","Canada",43.6532,-79.3832],["Montreal","Canada",45.5017,-73.5673],["Vancouver","Canada",49.2827,-123.1207],["Calgary","Canada",51.0447,-114.0719],["Ottawa","Canada",45.4215,-75.6972],["Mexico City","Mexico",19.4326,-99.1332],["Cancun","Mexico",21.1619,-86.8515],["Guadalajara","Mexico",20.6597,-103.3496],["London","UK",51.5074,-0.1278],["Manchester","UK",53.4808,-2.2426],["Edinburgh","UK",55.9533,-3.1883],["Birmingham","UK",52.4862,-1.8904],["Bristol","UK",51.4545,-2.5879],["Dublin","Ireland",53.3498,-6.2603],["Paris","France",48.8566,2.3522],["Lyon","France",45.764,4.8357],["Nice","France",43.7102,7.262],["Marseille","France",43.2965,5.3698],["Berlin","Germany",52.52,13.405],["Munich","Germany",48.1351,11.582],["Hamburg","Germany",53.5511,9.9937],["Frankfurt","Germany",50.1109,8.6821],["Amsterdam","Netherlands",52.3676,4.9041],["Rotterdam","Netherlands",51.9244,4.4777],["Brussels","Belgium",50.8503,4.3517],["Madrid","Spain",40.4168,-3.7038],["Barcelona","Spain",41.3851,2.1734],["Seville","Spain",37.3891,-5.9845],["Valencia","Spain",39.4699,-0.3763],["Lisbon","Portugal",38.7223,-9.1393],["Porto","Portugal",41.1579,-8.6291],["Rome","Italy",41.9028,12.4964],["Milan","Italy",45.4642,9.19],["Florence","Italy",43.7696,11.2558],["Naples","Italy",40.8518,14.2681],["Venice","Italy",45.4408,12.3155],["Vienna","Austria",48.2082,16.3738],["Zurich","Switzerland",47.3769,8.5417],["Geneva","Switzerland",46.2044,6.1432],["Prague","Czech Republic",50.0755,14.4378],["Budapest","Hungary",47.4979,19.0402],["Warsaw","Poland",52.2297,21.0122],["Krakow","Poland",50.0647,19.945],["Copenhagen","Denmark",55.6761,12.5683],["Stockholm","Sweden",59.3293,18.0686],["Oslo","Norway",59.9139,10.7522],["Helsinki","Finland",60.1699,24.9384],["Reykjavik","Iceland",64.1466,-21.9426],["Istanbul","Turkey",41.0082,28.9784],["Athens","Greece",37.9838,23.7275],["Santorini","Greece",36.3932,25.4615],["Dubai","UAE",25.2048,55.2708],["Abu Dhabi","UAE",24.4539,54.3773],["Tel Aviv","Israel",32.0853,34.7818],["Doha","Qatar",25.2854,51.531],["Riyadh","Saudi Arabia",24.7136,46.6753],["Tokyo","Japan",35.6762,139.6503],["Osaka","Japan",34.6937,135.5023],["Kyoto","Japan",35.0116,135.7681],["Seoul","South Korea",37.5665,126.978],["Busan","South Korea",35.1796,129.0756],["Beijing","China",39.9042,116.4074],["Shanghai","China",31.2304,121.4737],["Hong Kong","China",22.3193,114.1694],["Taipei","Taiwan",25.033,121.5654],["Singapore","Singapore",1.3521,103.8198],["Bangkok","Thailand",13.7563,100.5018],["Chiang Mai","Thailand",18.7883,98.9853],["Phuket","Thailand",7.8804,98.3923],["Kuala Lumpur","Malaysia",3.139,101.6869],["Jakarta","Indonesia",-6.2088,106.8456],["Bali","Indonesia",-8.4095,115.1889],["Ho Chi Minh City","Vietnam",10.8231,106.6297],["Hanoi","Vietnam",21.0278,105.8342],["Manila","Philippines",14.5995,120.9842],["Mumbai","India",19.076,72.8777],["Delhi","India",28.7041,77.1025],["Bangalore","India",12.9716,77.5946],["Goa","India",15.2993,74.124],["Sydney","Australia",-33.8688,151.2093],["Melbourne","Australia",-37.8136,144.9631],["Brisbane","Australia",-27.4698,153.0251],["Perth","Australia",-31.9505,115.8605],["Auckland","New Zealand",-36.8509,174.7645],["Queenstown","New Zealand",-45.0312,168.6626],["Cape Town","South Africa",-33.9249,18.4241],["Johannesburg","South Africa",-26.2041,28.0473],["Nairobi","Kenya",-1.2921,36.8219],["Cairo","Egypt",30.0444,31.2357],["Marrakech","Morocco",31.6295,-7.9811],["Lagos","Nigeria",6.5244,3.3792],["Accra","Ghana",5.6037,-0.187],["Sao Paulo","Brazil",-23.5505,-46.6333],["Rio de Janeiro","Brazil",-22.9068,-43.1729],["Buenos Aires","Argentina",-34.6037,-58.3816],["Lima","Peru",-12.0464,-77.0428],["Bogota","Colombia",4.711,-74.0721],["Medellin","Colombia",6.2442,-75.5812],["Cartagena","Colombia",10.391,-75.5144],["Santiago","Chile",-33.4489,-70.6693],["San Jose","Costa Rica",9.9281,-84.0907],["Panama City","Panama",8.9824,-79.5199],["Havana","Cuba",23.1136,-82.3666]].map(([n,c,lat,lng])=>({name:n,country:c,lat,lng}));
+
 const ALIASES={nyc:'new york',ny:'new york',la:'los angeles',sf:'san francisco',dc:'washington',philly:'philadelphia',vegas:'las vegas',nola:'new orleans',atl:'atlanta',chi:'chicago',bkk:'bangkok',hk:'hong kong',sg:'singapore',ldn:'london',ams:'amsterdam',cdmx:'mexico city'};
 
-function searchCities(q){if(!q||q.length<1)return[];q=ALIASES[q.toLowerCase().trim()]||q.toLowerCase().trim();return CITIES.map(c=>{const n=c.name.toLowerCase(),co=c.country.toLowerCase();let s=0;if(n===q)s=1000;else if(n.startsWith(q))s=500;else if(n.includes(q))s=300;else if(co.startsWith(q))s=200;else if(co.includes(q))s=100;return s>0?{...c,score:s}:null}).filter(Boolean).sort((a,b)=>b.score-a.score).slice(0,8)}
 
-let user=null,atlas=null,friends=[],stats={totalFriends:0,cities:0,countries:0},selected=null,selectedCity=null,toRemove=null,map=null,markers=[],referrer=null,myName=null;
-const PIN_COLORS=['#7c3aed','#3b82f6','#06b6d4','#22c55e','#eab308','#f97316','#f43f5e','#ec4899'];
-const COLORS=['#7c3aed','#8b5cf6','#ec4899','#f43f5e','#f97316','#eab308','#22c55e','#14b8a6','#06b6d4','#3b82f6'];
-let selectedColor=PIN_COLORS[0],lastDroppedId=null;
+// Country -> flag emoji lookup (covers everything in CITIES + extras)
+const FLAGS={
+  'USA':'🇺🇸','United States':'🇺🇸','Canada':'🇨🇦','Mexico':'🇲🇽','UK':'🇬🇧','United Kingdom':'🇬🇧',
+  'Ireland':'🇮🇪','France':'🇫🇷','Germany':'🇩🇪','Netherlands':'🇳🇱','Belgium':'🇧🇪','Spain':'🇪🇸',
+  'Portugal':'🇵🇹','Italy':'🇮🇹','Austria':'🇦🇹','Switzerland':'🇨🇭','Czech Republic':'🇨🇿',
+  'Hungary':'🇭🇺','Poland':'🇵🇱','Denmark':'🇩🇰','Sweden':'🇸🇪','Norway':'🇳🇴','Finland':'🇫🇮',
+  'Iceland':'🇮🇸','Turkey':'🇹🇷','Greece':'🇬🇷','UAE':'🇦🇪','Israel':'🇮🇱','Qatar':'🇶🇦',
+  'Saudi Arabia':'🇸🇦','Japan':'🇯🇵','South Korea':'🇰🇷','China':'🇨🇳','Taiwan':'🇹🇼',
+  'Singapore':'🇸🇬','Thailand':'🇹🇭','Malaysia':'🇲🇾','Indonesia':'🇮🇩','Vietnam':'🇻🇳',
+  'Philippines':'🇵🇭','India':'🇮🇳','Australia':'🇦🇺','New Zealand':'🇳🇿','South Africa':'🇿🇦',
+  'Kenya':'🇰🇪','Egypt':'🇪🇬','Morocco':'🇲🇦','Nigeria':'🇳🇬','Ghana':'🇬🇭','Brazil':'🇧🇷',
+  'Argentina':'🇦🇷','Peru':'🇵🇪','Colombia':'🇨🇴','Chile':'🇨🇱','Costa Rica':'🇨🇷',
+  'Panama':'🇵🇦','Cuba':'🇨🇺',
+};
+function flagFor(country){return FLAGS[country]||'🌍'}
+
+const PIN_COLORS=['#7c3aed','#3b82f6','#06b6d4','#22c55e','#facc15','#f97316','#fb7185','#ec4899'];
+const AVATAR_BG=['#7c3aed','#3b82f6','#06b6d4','#22c55e','#facc15','#f97316','#fb7185','#ec4899','#a78bfa','#60a5fa'];
+function colorForName(name){let h=0;for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))|0;return AVATAR_BG[Math.abs(h)%AVATAR_BG.length]}
+function initialsOf(name){return name.trim().split(/\s+/).map(s=>s[0]||'').join('').slice(0,2).toUpperCase()||'?'}
+
+function searchCities(q){
+  if(!q||q.length<1)return[];
+  q=ALIASES[q.toLowerCase().trim()]||q.toLowerCase().trim();
+  return CITIES.map(c=>{
+    const n=c.name.toLowerCase(),co=c.country.toLowerCase();
+    let s=0;
+    if(n===q)s=1000;
+    else if(n.startsWith(q))s=500;
+    else if(n.includes(q))s=300;
+    else if(co.startsWith(q))s=200;
+    else if(co.includes(q))s=100;
+    return s>0?{...c,score:s}:null;
+  }).filter(Boolean).sort((a,b)=>b.score-a.score).slice(0,8);
+}
+
+function timeAgo(iso){
+  const d=new Date(iso),sec=Math.floor((Date.now()-d.getTime())/1000);
+  if(sec<60)return 'just now';
+  if(sec<3600)return Math.floor(sec/60)+'m ago';
+  if(sec<86400)return Math.floor(sec/3600)+'h ago';
+  return Math.floor(sec/86400)+'d ago';
+}
+function escHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+// API wrapper
+async function api(path,opts={}){
+  const res=await fetch(path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...opts});
+  let body=null;try{body=await res.json()}catch{}
+  if(!res.ok)throw new Error(body?.error||`HTTP ${res.status}`);
+  return body;
+}
+
+// ============ STATE ============
+let atlas=null,friends=[],stats={totalFriends:0,cities:0,countries:0};
+let map=null,markers=[],referrer=null,myName=null,myPinId=null;
+let selectedCity=null,selectedColor=PIN_COLORS[0];
+let searchQuery='';
 const $=id=>document.getElementById(id);
-const getColor=n=>{let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return COLORS[Math.abs(h)%COLORS.length]};
-const getInitials=n=>n.split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
-const formatDate=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-function timeAgo(d){const s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return 'just now';if(s<3600)return `${Math.floor(s/60)}m ago`;if(s<86400)return `${Math.floor(s/3600)}h ago`;if(s<604800)return `${Math.floor(s/86400)}d ago`;return formatDate(d)}
-const toast=m=>{const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)};
-const api=async(url,opts={})=>(await fetch(url,{...opts,headers:{'Content-Type':'application/json',...opts.headers}})).json();
 
-function getGroups(){const g={};friends.forEach(f=>{const k=`${f.lat.toFixed(1)},${f.lng.toFixed(1)}`;(g[k]=g[k]||[]).push(f)});return g}
-function getPos(f,i,t){if(t<=1)return{lat:f.lat,lng:f.lng};const r=.5+t*.1,a=(2*Math.PI*i)/t-Math.PI/2;return{lat:f.lat+r*Math.cos(a),lng:f.lng+r*Math.sin(a)}}
+// ============ UI HELPERS ============
+function showOverlay(id){$(id).classList.add('show')}
+function closeOverlay(id){$(id).classList.remove('show')}
+function clearError(id){const e=$(id);if(e){e.classList.remove('show');e.textContent=''}}
+function showError(id,msg){const e=$(id);if(e){e.textContent=msg;e.classList.add('show')}}
+function toast(msg,ms=2400){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),ms)}
 
-function render(){
-  if(!atlas)return;
-  $('atlas-title').textContent='Friend Atlas';
-  $('atlas-owner-label').textContent=atlas.ownerName+'\'s map';
-  $('header-code').textContent=atlas.code;
-  $('stat-friends').textContent=stats.totalFriends;
-  $('stat-cities').textContent=stats.cities;
-  $('stat-countries').textContent=stats.countries;
-  $('empty').classList.toggle('show',friends.length===0);
-  $('sidebar').innerHTML=friends.map((f,idx)=>`<div class="friend-item ${selected?.id===f.id?'selected':''}" data-id="${f.id}" style="animation-delay:${idx*50}ms"><div class="friend-avatar" style="background:${f.profilePicture?'transparent':getPinColor(f)}">${f.profilePicture?`<img src="${f.profilePicture}">`:getInitials(f.name)}</div><div class="friend-info"><div class="friend-name">${esc(f.name)}</div><div class="friend-city">${esc(f.city)}</div></div></div>`).join('');
-  $('sidebar').querySelectorAll('.friend-item').forEach(el=>el.onclick=()=>select(friends.find(f=>f.id==el.dataset.id)));
-  renderMarkers();
+// Switch between welcome and atlas mode (changes body theme)
+function switchToWelcome(){
+  document.body.classList.add('welcome-mode');
+  $('welcome').classList.remove('hidden');
+  $('atlas').classList.add('hidden');
+}
+function switchToAtlas(){
+  document.body.classList.remove('welcome-mode');
+  $('welcome').classList.add('hidden');
+  $('atlas').classList.remove('hidden');
 }
 
-function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
-
-function getPinColor(f){return f.color||getColor(f.name)}
-
-function renderMarkers(){
-  if(!map)return;
-  markers.forEach(m=>map.removeLayer(m));markers=[];
-  const groups=getGroups();
-  Object.values(groups).forEach(g=>g.forEach((f,i)=>{
-    const sel=selected?.id===f.id,pos=getPos(f,i,g.length),sz=sel?46:38;
-    const color=getPinColor(f);
-    const isNew=f.id===lastDroppedId;
-    const rippleHtml=isNew?`<div class="pin-ripple" style="--pin-color:${color}"></div>`:'';
-    const icon=L.divIcon({className:'',html:`<div class="map-pin-wrap">${rippleHtml}<div class="map-pin ${sel?'selected':''} ${isNew?'new-pin':''}" style="width:${sz}px;height:${sz}px;background:${f.profilePicture?'transparent':color};font-size:${sel?'15px':'13px'};--pin-color:${color}">${f.profilePicture?`<img src="${f.profilePicture}">`:getInitials(f.name)}</div><div class="pin-tooltip"><div class="pin-tooltip-name">${esc(f.name)}</div><div class="pin-tooltip-city">${esc(f.city)}</div></div></div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
-    const m=L.marker([pos.lat,pos.lng],{icon}).addTo(map);
-    m.on('click',()=>select(f));markers.push(m);
-  }));
-  if(lastDroppedId)setTimeout(()=>{lastDroppedId=null},2000);
+// ============ LOADING / BOOT ============
+function hideLoading(welcomeBg){
+  const l=$('loading');
+  if(welcomeBg)l.classList.add('welcome');
+  l.classList.add('fade');
+  setTimeout(()=>l.style.display='none',420);
 }
 
-function select(f){
-  selected=f;
-  if(f){
-    $('detail-avatar').innerHTML=f.profilePicture?`<img src="${f.profilePicture}">`:getInitials(f.name);
-    $('detail-avatar').style.background=f.profilePicture?'transparent':getPinColor(f);
-    $('detail-name').textContent=f.name;
-    $('detail-city').textContent=f.city;
-    $('detail-note').textContent=f.note?`"${f.note}"`:'';
-    $('detail-note').style.display=f.note?'block':'none';
-    $('detail-meta').textContent='Joined '+formatDate(f.createdAt);
-    $('detail-remove').classList.toggle('show',user&&atlas.ownerId===user.id);
-    $('detail').classList.add('show');
-    const groups=getGroups(),g=Object.values(groups).find(x=>x.some(y=>y.id===f.id)),idx=g?.findIndex(x=>x.id===f.id)||0,pos=getPos(f,idx,g?.length||1);
-    map?.flyTo([pos.lat,pos.lng],5,{duration:.8});
-  }else{
-    $('detail').classList.remove('show');
-  }
-  render();
-}
-
-async function init(){
-  map=L.map('map',{zoomControl:false,attributionControl:true}).setView([25,0],2.5);
-  L.control.zoom({position:'bottomright'}).addTo(map);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',{attribution:'&copy; <a href="https://openstreetmap.org/">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',maxZoom:20,subdomains:'abcd'}).addTo(map);
+async function boot(){
   const params=new URLSearchParams(location.search);
   const pathMatch=location.pathname.match(/^\/join\/([A-Z0-9]{6})$/i);
-  const code=pathMatch?pathMatch[1]:params.get('code')||localStorage.getItem('lastAtlas');
+  const codeFromUrl=pathMatch?pathMatch[1]:params.get('code');
+  const codeFromStorage=localStorage.getItem('lastAtlas');
+  const code=codeFromUrl||codeFromStorage;
   referrer=params.get('ref')||null;
-  if(code)await loadAtlas(code);else showWelcome();
-  $('loading').classList.add('hidden');
-  setupEvents();
+
+  if(code){
+    try{
+      await loadAtlas(code);
+      hideLoading(false);
+      return;
+    }catch(e){
+      console.warn('Failed to load atlas',code,e);
+      // Fall through to welcome
+      localStorage.removeItem('lastAtlas');
+    }
+  }
+  switchToWelcome();
+  hideLoading(true);
 }
 
-function showWelcome(){$('welcome').classList.remove('hidden')}
-
+// ============ ATLAS LOAD ============
 async function loadAtlas(code){
-  try{
-    const data=await api(`/api/atlas/code/${code}`);
-    if(data.error){toast('Atlas not found');showWelcome();return}
-    atlas=data.atlas;friends=data.friends;stats=data.stats;
-    localStorage.setItem('lastAtlas',atlas.code);
-    $('welcome').classList.add('hidden');
-    history.replaceState({},'',`/join/${code}`);
-    render();showJoinCTA();showActivity();
-  }catch(e){toast('Failed to load');showWelcome()}
+  const data=await api(`/api/atlas/code/${code}`);
+  atlas=data.atlas;
+  friends=data.friends;
+  stats=data.stats;
+  localStorage.setItem('lastAtlas',atlas.code);
+  history.replaceState(null,'',`/join/${atlas.code}`);
+  switchToAtlas();
+  renderHeader();
+  initMap();
+  renderPins(true);
+  renderPeoplePanel();
+  animateStats();
+  determineMyPin();
 }
 
-function showJoinCTA(){
-  const hasPin=user?friends.some(f=>f.userId===user?.id):false;
-  if(!hasPin&&atlas&&friends.length>=0){
-    $('cta-owner').textContent=referrer||atlas.ownerName;
-    const cnt=friends.length;
-    $('cta-count').textContent=cnt>0?`· ${cnt} friend${cnt!==1?'s':''} joined`:'';
-    $('join-cta').classList.remove('hidden');
-  }else{$('join-cta').classList.add('hidden')}
+function determineMyPin(){
+  // Anonymous session cookie identifies "us" — but we don't have access to it
+  // from JS (httpOnly). Instead we infer from referrer flow / localStorage.
+  myPinId=parseInt(localStorage.getItem(`my-pin-${atlas.code}`)||'0',10)||null;
+  myName=localStorage.getItem(`my-name-${atlas.code}`)||null;
 }
-function hideJoinCTA(){$('join-cta').classList.add('hidden')}
+
+function renderHeader(){
+  const mapName=atlas.mapName||`${atlas.ownerName}'s Friend Atlas`;
+  $('map-name-display').textContent=mapName;
+  $('owner-name-display').textContent=atlas.ownerName;
+  $('header-code-display').textContent=atlas.code;
+  document.title=`${mapName} · Friend Atlas`;
+}
+
+// ============ MAP ============
+function initMap(){
+  if(map){map.remove();map=null}
+  map=L.map('map',{zoomControl:true,attributionControl:true,minZoom:2,maxZoom:14,worldCopyJump:true}).setView([20,0],2);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',{
+    attribution:'&copy; OSM &copy; CARTO',subdomains:'abcd',maxZoom:14
+  }).addTo(map);
+}
+
+function pinIcon(color,initials,id){
+  return L.divIcon({
+    className:'',
+    html:`<div class="pin-marker" data-pin-id="${id}" style="width:32px;height:32px;background:${color}">${escHtml(initials)}</div>`,
+    iconSize:[32,32],
+    iconAnchor:[16,16],
+  });
+}
+
+function renderPins(animate){
+  markers.forEach(m=>map.removeLayer(m));markers=[];
+  friends.forEach((f,i)=>{
+    const color=f.color||colorForName(f.name);
+    const initials=initialsOf(f.name);
+    const m=L.marker([f.lat,f.lng],{icon:pinIcon(color,initials,f.id),title:f.name}).addTo(map);
+    m.on('click',()=>showDetail(f));
+    markers.push(m);
+    if(animate){
+      setTimeout(()=>{
+        const el=m.getElement();
+        if(el){const inner=el.querySelector('.pin-marker');if(inner)inner.classList.add('loaded')}
+      },80*i+50);
+    }else{
+      const el=m.getElement();if(el){const inner=el.querySelector('.pin-marker');if(inner)inner.classList.add('loaded')}
+    }
+  });
+  fitBoundsToFriends();
+}
+
+function fitBoundsToFriends(){
+  if(!friends.length){map.setView([20,0],2);return}
+  if(friends.length===1){map.setView([friends[0].lat,friends[0].lng],4);return}
+  const latlngs=friends.map(f=>[f.lat,f.lng]);
+  const bounds=L.latLngBounds(latlngs);
+  map.fitBounds(bounds,{padding:[60,60],maxZoom:6});
+}
+
+// ============ STATS ANIMATION ============
+let lastStats={totalFriends:0,cities:0,countries:0};
+function animateStats(){
+  animateNum('stat-friends',lastStats.totalFriends,stats.totalFriends);
+  animateNum('stat-cities',lastStats.cities,stats.cities);
+  animateNum('stat-countries',lastStats.countries,stats.countries);
+  lastStats={...stats};
+}
+function animateNum(id,from,to){
+  const el=$(id);if(!el)return;
+  const dur=600,start=performance.now();
+  function tick(now){
+    const t=Math.min(1,(now-start)/dur);
+    const eased=1-Math.pow(1-t,3);
+    el.textContent=Math.round(from+(to-from)*eased);
+    if(t<1)requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+// ============ PEOPLE PANEL (empty state OR friend list) ============
+function renderPeoplePanel(){
+  const c=$('people-content');
+  if(!friends.length){
+    c.innerHTML=renderEmptyChecklist(false);
+    return;
+  }
+  // If only my own pin and no one else — show "now invite" state
+  const onlyMe=friends.length===1&&myPinId&&friends[0].id===myPinId;
+  if(onlyMe){
+    c.innerHTML=renderEmptyChecklist(true);
+    return;
+  }
+  c.innerHTML=renderFriendList();
+}
+
+function renderEmptyChecklist(droppedOwn){
+  const havePinned=droppedOwn||(myPinId&&friends.some(f=>f.id===myPinId));
+  const haveOthers=friends.length>(havePinned?1:0);
+  const inviteLine=`<div class="empty-foot">🔒 Private by link. City-level only.<br>Anyone can remove their own pin anytime.</div>`;
+  if(!havePinned){
+    return `
+      <div class="empty-checklist">
+        <div class="empty-title">Your atlas is ready</div>
+        <div class="empty-sub">Now do two things:</div>
+        <div class="check-item"><div class="check-circle"></div><div class="check-text">Add yourself to the map</div></div>
+        <div class="check-item"><div class="check-circle"></div><div class="check-text">Invite 3 friends to drop their pin</div></div>
+        <div class="check-action">
+          <button class="btn btn-primary btn-full" onclick="openAddModal()">📍 Drop My Pin</button>
+        </div>
+        <div class="check-action">
+          <button class="btn btn-secondary btn-full" onclick="openShareModal()">📤 Copy Invite Link</button>
+        </div>
+        ${inviteLine}
+      </div>`;
+  }
+  // Dropped own, no others yet
+  return `
+    <div class="empty-checklist">
+      <div class="empty-title">Nice. You're on the map.</div>
+      <div class="empty-sub">Now send this to a few friends so they can add themselves.</div>
+      <div class="check-item done"><div class="check-circle"></div><div class="check-text">Add yourself to the map</div></div>
+      <div class="check-item"><div class="check-circle"></div><div class="check-text">Invite 3 friends to drop their pin</div></div>
+      <div class="check-action">
+        <button class="btn btn-primary btn-full" onclick="openShareModal()">📤 Copy Invite Link</button>
+      </div>
+      <div class="check-action">
+        <button class="btn btn-secondary btn-full" onclick="shareViaSMS()">💬 Share via Text</button>
+      </div>
+      ${inviteLine}
+    </div>`;
+}
+
+function renderFriendList(){
+  // Apply search filter
+  const q=searchQuery.trim().toLowerCase();
+  const filtered=q?friends.filter(f=>f.name.toLowerCase().includes(q)||f.city.toLowerCase().includes(q)||(f.country||'').toLowerCase().includes(q)||(f.note||'').toLowerCase().includes(q)):friends;
+
+  if(!filtered.length){
+    return `<div class="empty-foot" style="margin-top:40px">No matches for "${escHtml(searchQuery)}"</div>`;
+  }
+
+  // Group by city
+  const groups=new Map();
+  filtered.forEach(f=>{
+    const key=`${f.city}|${f.country||''}`;
+    if(!groups.has(key))groups.set(key,{city:f.city,country:f.country,friends:[]});
+    groups.get(key).friends.push(f);
+  });
+  const sorted=[...groups.values()].sort((a,b)=>b.friends.length-a.friends.length);
+
+  return sorted.map(g=>{
+    const cityName=g.city.replace(/, [^,]+$/,''); // strip ", USA"-style suffix
+    const flag=flagFor(g.country);
+    return `
+      <div class="city-group">
+        <div class="city-header">
+          <span class="flag">${flag}</span>
+          <span class="city-name">${escHtml(cityName)}</span>
+          <span class="city-count">${g.friends.length}</span>
+        </div>
+        ${g.friends.map(f=>`
+          <div class="friend-card" data-friend-id="${f.id}" onclick="focusFriend(${f.id})">
+            <div class="avatar" style="background:${f.color||colorForName(f.name)}">${escHtml(initialsOf(f.name))}</div>
+            <div style="flex:1;min-width:0">
+              <div class="friend-name">${escHtml(f.name)}${myPinId===f.id?' <span style="font-size:10px;color:var(--accent2);font-weight:600">YOU</span>':''}</div>
+              ${f.note?`<div class="friend-meta">${escHtml(f.note)}</div>`:`<div class="friend-meta" style="color:var(--text3)">${timeAgo(f.createdAt)}</div>`}
+            </div>
+            ${f.note?`<div class="friend-time">${timeAgo(f.createdAt)}</div>`:''}
+          </div>
+        `).join('')}
+      </div>`;
+  }).join('');
+}
+
+function focusFriend(id){
+  const f=friends.find(x=>x.id===id);
+  if(!f)return;
+  map.flyTo([f.lat,f.lng],6,{duration:.7});
+  setTimeout(()=>showDetail(f),800);
+}
+
+// ============ DETAIL CARD ============
+function showDetail(f){
+  const d=$('detail');
+  $('detail-avatar').textContent=initialsOf(f.name);
+  $('detail-avatar').style.background=f.color||colorForName(f.name);
+  $('detail-name').textContent=f.name;
+  $('detail-city').textContent=`${flagFor(f.country)} ${f.city}`;
+  if(f.note){$('detail-note').textContent=f.note;$('detail-note').style.display='block'}else{$('detail-note').style.display='none'}
+  $('detail-meta').textContent=`Joined ${timeAgo(f.createdAt)}`;
+  // Only show remove if it's mine
+  $('detail-remove').style.display=(myPinId===f.id)?'block':'none';
+  $('detail-remove').onclick=()=>confirmRemove(f);
+  d.classList.add('show');
+}
+function hideDetail(){$('detail').classList.remove('show')}
+
+function confirmRemove(f){
+  $('confirm-name').textContent=f.name;
+  showOverlay('confirm-modal');
+  $('confirm-yes').onclick=async()=>{
+    closeOverlay('confirm-modal');
+    try{
+      await api(`/api/atlas/${atlas.id}/friend/${f.id}`,{method:'DELETE'});
+      hideDetail();
+      localStorage.removeItem(`my-pin-${atlas.code}`);
+      myPinId=null;myName=null;
+      await refreshAtlas();
+      toast('Pin removed');
+    }catch(e){toast('Couldn’t remove pin')}
+  };
+}
+
+// ============ REFRESH ============
+async function refreshAtlas(){
+  const data=await api(`/api/atlas/code/${atlas.code}`);
+  atlas=data.atlas;friends=data.friends;stats=data.stats;
+  renderHeader();
+  renderPins(false);
+  renderPeoplePanel();
+  animateStats();
+}
+
+// ============ ADD PIN FLOW ============
+function openAddModal(){
+  $('add-name').value=myName||'';
+  $('add-city').value='';
+  $('add-note').value='';
+  selectedCity=null;
+  $('city-confirmed').style.display='none';
+  $('city-dropdown').classList.remove('show');
+  selectedColor=PIN_COLORS[0];
+  renderColorPicker();
+  clearError('add-error');
+  showOverlay('add-modal');
+  setTimeout(()=>$('add-name').focus(),100);
+}
+
+function renderColorPicker(){
+  $('color-picker').innerHTML=PIN_COLORS.map(c=>
+    `<div class="color-dot ${c===selectedColor?'active':''}" style="background:${c}" data-color="${c}"></div>`
+  ).join('');
+  $('color-picker').querySelectorAll('.color-dot').forEach(el=>{
+    el.onclick=()=>{selectedColor=el.dataset.color;renderColorPicker()};
+  });
+}
+
+function bindCityAutocomplete(){
+  const input=$('add-city'),dropdown=$('city-dropdown');
+  let activeIdx=-1,results=[];
+  input.addEventListener('input',()=>{
+    const q=input.value;
+    results=searchCities(q);
+    if(!results.length){dropdown.classList.remove('show');return}
+    dropdown.innerHTML=results.map((c,i)=>
+      `<div class="city-opt ${i===0?'active':''}" data-i="${i}"><strong>${escHtml(c.name)}</strong><span class="country">${escHtml(c.country)}</span></div>`
+    ).join('');
+    dropdown.classList.add('show');
+    activeIdx=0;
+    dropdown.querySelectorAll('.city-opt').forEach(el=>{
+      el.onclick=()=>selectCity(results[parseInt(el.dataset.i,10)]);
+    });
+  });
+  input.addEventListener('keydown',e=>{
+    if(!dropdown.classList.contains('show'))return;
+    if(e.key==='ArrowDown'){e.preventDefault();activeIdx=Math.min(results.length-1,activeIdx+1);refreshActive()}
+    else if(e.key==='ArrowUp'){e.preventDefault();activeIdx=Math.max(0,activeIdx-1);refreshActive()}
+    else if(e.key==='Enter'){e.preventDefault();if(results[activeIdx])selectCity(results[activeIdx])}
+    else if(e.key==='Escape'){dropdown.classList.remove('show')}
+  });
+  function refreshActive(){
+    dropdown.querySelectorAll('.city-opt').forEach((el,i)=>el.classList.toggle('active',i===activeIdx));
+  }
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('#add-modal .city-wrap'))dropdown.classList.remove('show');
+  });
+}
+
+function selectCity(c){
+  selectedCity=c;
+  $('add-city').value=`${c.name}, ${c.country}`;
+  $('city-confirmed').style.display='flex';
+  $('city-confirmed-name').textContent=`${c.name}, ${c.country}`;
+  $('city-dropdown').classList.remove('show');
+  if(map)map.flyTo([c.lat,c.lng],4,{duration:.6});
+}
+
+async function submitPin(){
+  clearError('add-error');
+  const name=$('add-name').value.trim();
+  const note=$('add-note').value.trim();
+  if(!name){showError('add-error','Enter your name');return}
+  if(!selectedCity){showError('add-error','Pick a city from the dropdown');return}
+  const body={
+    name,
+    city:`${selectedCity.name}, ${selectedCity.country}`,
+    country:selectedCity.country,
+    lat:selectedCity.lat,
+    lng:selectedCity.lng,
+    note:note||null,
+    color:selectedColor,
+    referredBy:referrer||null,
+  };
+  try{
+    const d=await api(`/api/atlas/code/${atlas.code}/join-anon`,{method:'POST',body:JSON.stringify(body)});
+    closeOverlay('add-modal');
+    if(d.friend){
+      myPinId=d.friend.id;
+      myName=d.friend.name;
+      localStorage.setItem(`my-pin-${atlas.code}`,String(d.friend.id));
+      localStorage.setItem(`my-name-${atlas.code}`,d.friend.name);
+    }
+    await refreshAtlas();
+    if(d.friend){map.flyTo([d.friend.lat,d.friend.lng],5,{duration:.7})}
+    showCelebration(d.friend);
+    showConfetti();
+    pushActivity({name,city:`${selectedCity.name}, ${selectedCity.country}`,country:selectedCity.country,color:selectedColor});
+  }catch(e){
+    showError('add-error',e.message||'Failed to drop pin');
+  }
+}
+
+// ============ CELEBRATION + CONFETTI + ACTIVITY ============
+function showCelebration(friend){
+  const others=friends.length-1;
+  $('celebrate-title').textContent="You're on the map!";
+  $('celebrate-desc').textContent=others>0
+    ? `You're on ${atlas.ownerName}'s atlas with ${others} other${others!==1?'s':''}.`
+    : `Now send the link to a few friends.`;
+  $('post-drop').classList.add('show');
+}
+function hideCelebration(){$('post-drop').classList.remove('show')}
 
 function showConfetti(){
-  const colors=['#7c3aed','#8b5cf6','#ec4899','#22c55e','#eab308','#06b6d4','#f97316'];
-  const container=document.createElement('div');container.className='confetti';container.style.cssText='left:50%;top:50%';
-  document.body.appendChild(container);
-  for(let i=0;i<24;i++){
-    const dot=document.createElement('div');dot.className='confetti-dot';
-    const angle=Math.random()*Math.PI*2,dist=50+Math.random()*100;
-    dot.style.cssText=`background:${colors[i%colors.length]};--tx:${Math.cos(angle)*dist}px;--ty:${Math.sin(angle)*dist}px;left:-4px;top:-4px;animation-delay:${Math.random()*.2}s`;
-    container.appendChild(dot);
+  const el=$('confetti');el.classList.remove('hidden');
+  el.innerHTML='';
+  const colors=PIN_COLORS;
+  for(let i=0;i<60;i++){
+    const p=document.createElement('div');
+    p.className='confetti-piece';
+    p.style.left=Math.random()*100+'%';
+    p.style.background=colors[i%colors.length];
+    p.style.animationDelay=(Math.random()*.4)+'s';
+    p.style.animationDuration=(1.6+Math.random()*1)+'s';
+    if(i%3===0)p.style.borderRadius='50%';
+    else if(i%3===1)p.style.transform='rotate(45deg)';
+    el.appendChild(p);
   }
-  setTimeout(()=>container.remove(),1200);
+  setTimeout(()=>{el.classList.add('hidden');el.innerHTML=''},2800);
 }
 
-function showActivity(){
-  const feed=$('activity');feed.innerHTML='';
-  // Show up to 3 most recent joins from the last 7 days
-  const recent=friends.filter(f=>(Date.now()-new Date(f.createdAt))<7*86400*1000).slice(0,3);
-  if(!recent.length)return;
-  recent.forEach((f,i)=>{
-    setTimeout(()=>{
-      const el=document.createElement('div');el.className='activity-item';
-      el.innerHTML=`<div class="activity-avatar" style="background:${getPinColor(f)}">${getInitials(f.name)}</div><div class="activity-text"><strong>${esc(f.name)}</strong> joined in ${esc(f.city)} <span class="activity-time">${timeAgo(f.createdAt)}</span></div>`;
-      feed.appendChild(el);
-      requestAnimationFrame(()=>el.classList.add('show'));
-      // Auto-dismiss after 5s
-      setTimeout(()=>{el.classList.remove('show');el.classList.add('hide');setTimeout(()=>el.remove(),300)},5000);
-    },i*800);
-  });
+function pushActivity(f){
+  const wrap=$('activity');
+  const div=document.createElement('div');
+  div.className='activity-item';
+  div.innerHTML=`<div class="avatar" style="background:${f.color||colorForName(f.name)}">${escHtml(initialsOf(f.name))}</div><div class="activity-text"><strong>${escHtml(f.name)}</strong> joined in ${escHtml(f.city.split(',')[0])} ${flagFor(f.country)}</div><div class="activity-time">just now</div>`;
+  wrap.appendChild(div);
+  setTimeout(()=>div.style.opacity='0',5500);
+  setTimeout(()=>div.remove(),6000);
 }
 
-function getShareUrl(){
-  const base=`${location.origin}/join/${atlas.code}`;
-  return myName?`${base}?ref=${encodeURIComponent(myName)}`:base;
+// ============ SHARE MODAL ============
+function openShareModal(){
+  const url=`${location.origin}/join/${atlas.code}`;
+  $('share-code-display').textContent=atlas.code;
+  $('share-url-display').textContent=url;
+  const message=buildShareMessage();
+  $('share-message-text').textContent=message;
+  // Native share fallback
+  $('share-sms').href=`sms:&body=${encodeURIComponent(message)}`;
+  $('share-wa').href=`https://wa.me/?text=${encodeURIComponent(message)}`;
+  $('share-email').href=`mailto:?subject=${encodeURIComponent('Drop your pin on my Friend Atlas')}&body=${encodeURIComponent(message)}`;
+  showOverlay('share-modal');
 }
-function getShareText(){
-  const url=getShareUrl();
-  const cnt=friends.length;
-  return cnt>1
-    ?`Drop your pin on my Friend Atlas! ${cnt} friends already joined.\n\n${url}`
-    :`Drop your pin on my Friend Atlas!\n\n${url}`;
+function buildShareMessage(){
+  const name=atlas.mapName||`${atlas.ownerName}'s Friend Atlas`;
+  const url=`${location.origin}/join/${atlas.code}?ref=${encodeURIComponent(myName||atlas.ownerName)}`;
+  return `Drop your pin on ${name} so I can see where everyone is: ${url}`;
 }
-async function shareAtlas(){
-  const url=getShareUrl();
-  const text=getShareText();
-  if(navigator.share){try{await navigator.share({title:'Friend Atlas',text,url});return}catch(e){if(e.name==='AbortError')return}}
-  navigator.clipboard.writeText(text);toast('Copied to clipboard');
+async function copyText(text,successMsg){
+  try{await navigator.clipboard.writeText(text);toast(successMsg||'Copied')}
+  catch{toast('Copy failed — long-press to copy manually')}
+}
+async function nativeShare(){
+  const url=`${location.origin}/join/${atlas.code}`;
+  const message=buildShareMessage();
+  if(navigator.share){
+    try{await navigator.share({title:'Friend Atlas',text:message,url});return}
+    catch(e){if(e.name==='AbortError')return}
+  }
+  // Fallback: copy
+  copyText(message,'Message copied — paste it anywhere');
+}
+function shareViaSMS(){
+  const message=buildShareMessage();
+  location.href=`sms:&body=${encodeURIComponent(message)}`;
 }
 
-function setupEvents(){
-  // Create
-  $('create-btn').onclick=async()=>{
-    const name=($('creator-name')?.value||'').trim();
-    if(!name){$('welcome-error').textContent='Enter your name';$('welcome-error').classList.add('show');return}
-    $('welcome-error').classList.remove('show');
-    const d=await api('/api/atlas/create',{method:'POST',body:JSON.stringify({name})});
-    if(d.success){myName=name;await loadAtlas(d.atlas.code);toast('Atlas created!');
-      // Immediately prompt creator to drop their pin
-      $('add-subtitle').textContent='You\'re the first pin!';
-      $('add-name').value=name;$('add-city').value='';$('add-note').value='';
-      $('city-dropdown').classList.remove('show');$('city-badge').classList.remove('show');$('add-error').classList.remove('show');
-      selectedCity=null;selectedColor=PIN_COLORS[Math.floor(Math.random()*PIN_COLORS.length)];
-      picker.querySelectorAll('.color-swatch').forEach(s=>{s.classList.toggle('active',s.dataset.color===selectedColor)});
-      $('add-modal').classList.add('show');hideJoinCTA();
+// ============ CREATE / JOIN FLOW ============
+async function submitCreate(){
+  clearError('create-error');
+  const name=$('create-name').value.trim();
+  const mapName=$('create-mapname').value.trim();
+  if(!name){showError('create-error','Enter your name');return}
+  try{
+    const d=await api('/api/atlas/create',{method:'POST',body:JSON.stringify({name,mapName:mapName||null})});
+    if(d.atlas){
+      closeOverlay('create-modal');
+      await loadAtlas(d.atlas.code);
+      // Auto-open share modal so they immediately get the link
+      setTimeout(()=>openShareModal(),300);
+      toast('Atlas created. Share the link with friends.');
     }
-  };
+  }catch(e){
+    showError('create-error',e.message||'Could not create atlas');
+  }
+}
 
-  // Join from welcome
-  $('join-btn').onclick=async()=>{
-    const code=$('join-code').value.toUpperCase().trim();
-    if(code.length!==6){$('welcome-error').textContent='Enter a 6-character code';$('welcome-error').classList.add('show');return}
+async function submitJoin(){
+  clearError('join-error');
+  const code=$('join-code').value.trim().toUpperCase();
+  if(!/^[A-Z0-9]{6}$/.test(code)){showError('join-error','Enter the 6-letter code');return}
+  try{
+    closeOverlay('join-modal');
     await loadAtlas(code);
-  };
-  $('join-code').oninput=e=>e.target.value=e.target.value.toUpperCase();
-  $('creator-name').onkeydown=e=>{if(e.key==='Enter')$('create-btn').click()};
-  $('join-code').onkeydown=e=>{if(e.key==='Enter')$('join-btn').click()};
+  }catch(e){
+    showError('join-error',e.message||'Atlas not found');
+    showOverlay('join-modal');
+  }
+}
 
-  // Share modal
-  const openShare=()=>{
-    $('share-code').textContent=atlas.code;
-    const url=getShareUrl();
-    $('share-url').textContent=url;
-    const cnt=friends.length;
-    $('share-proof').textContent=cnt>0?`${cnt} friend${cnt!==1?'s':''} already on this atlas`:'';
-    $('share-proof').style.display=cnt>0?'block':'none';
-    // SMS & WhatsApp deep links
-    const text=encodeURIComponent(getShareText());
-    $('share-sms').href=`sms:?&body=${text}`;
-    $('share-wa').href=`https://wa.me/?text=${text}`;
-    $('share-modal').classList.add('show');
-  };
-  $('share-btn').onclick=openShare;
-  $('empty-share-btn').onclick=openShare;
-  $('share-close').onclick=()=>$('share-modal').classList.remove('show');
-  $('share-modal').onclick=e=>{if(e.target.id==='share-modal')$('share-modal').classList.remove('show')};
-  $('copy-link-btn').onclick=()=>{navigator.clipboard.writeText(getShareUrl());toast('Link copied')};
-  $('copy-text-btn').onclick=()=>{
-    navigator.clipboard.writeText(getShareText());toast('Copied to clipboard');
-  };
+// ============ RENAME ============
+async function submitRenameMap(){
+  clearError('rename-map-error');
+  const v=$('rename-map-input').value.trim();
+  try{
+    const d=await api(`/api/atlas/code/${atlas.code}/rename-map`,{method:'PATCH',body:JSON.stringify({mapName:v||null})});
+    closeOverlay('rename-map-modal');
+    atlas.mapName=d.mapName||null;
+    renderHeader();
+    toast('Map renamed');
+  }catch(e){showError('rename-map-error',e.message||'Failed')}
+}
+async function submitRenameOwner(){
+  clearError('rename-owner-error');
+  const v=$('rename-owner-input').value.trim();
+  if(!v){showError('rename-owner-error','Name required');return}
+  try{
+    await api(`/api/atlas/code/${atlas.code}/rename`,{method:'PATCH',body:JSON.stringify({name:v})});
+    closeOverlay('rename-owner-modal');
+    atlas.ownerName=v;
+    renderHeader();
+    toast('Name updated');
+  }catch(e){showError('rename-owner-error',e.message||'Failed')}
+}
 
-  // Color picker
-  const picker=$('color-picker');
-  PIN_COLORS.forEach(c=>{
-    const sw=document.createElement('div');sw.className='color-swatch'+(c===selectedColor?' active':'');
-    sw.style.background=c;sw.dataset.color=c;
-    sw.onclick=()=>{picker.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));sw.classList.add('active');selectedColor=c};
-    picker.appendChild(sw);
+// ============ EVENT WIRING ============
+function wireEvents(){
+  // Welcome CTAs
+  $('hero-create').onclick=()=>{showOverlay('create-modal');setTimeout(()=>$('create-name').focus(),100)};
+  $('hero-join').onclick=()=>{showOverlay('join-modal');setTimeout(()=>$('join-code').focus(),100)};
+
+  // Create modal
+  $('create-name').addEventListener('input',()=>{
+    const n=$('create-name').value.trim();
+    $('create-mapname').placeholder=n?`${n}'s Friend Atlas`:`Jesse's Friend Atlas`;
   });
+  $('create-submit').onclick=submitCreate;
+  $('create-name').addEventListener('keydown',e=>{if(e.key==='Enter')submitCreate()});
+  $('create-mapname').addEventListener('keydown',e=>{if(e.key==='Enter')submitCreate()});
 
-  // Add pin modal
-  const openAdd=()=>{
-    $('add-subtitle').textContent=atlas.ownerName?`on ${atlas.ownerName}'s atlas`:'Add yourself';
-    $('add-name').value='';$('add-city').value='';$('add-note').value='';
-    $('city-dropdown').classList.remove('show');$('city-badge').classList.remove('show');$('add-error').classList.remove('show');
-    selectedCity=null;selectedColor=PIN_COLORS[Math.floor(Math.random()*PIN_COLORS.length)];
-    picker.querySelectorAll('.color-swatch').forEach(s=>{s.classList.toggle('active',s.dataset.color===selectedColor)});
-    $('add-modal').classList.add('show');hideJoinCTA();
+  // Join modal
+  $('join-submit').onclick=submitJoin;
+  $('join-code').addEventListener('keydown',e=>{if(e.key==='Enter')submitJoin()});
+  $('join-code').addEventListener('input',()=>{$('join-code').value=$('join-code').value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)});
+
+  // Atlas header
+  $('add-btn').onclick=openAddModal;
+  $('invite-btn').onclick=openShareModal;
+  $('menu-btn').onclick=e=>{e.stopPropagation();$('user-menu').classList.toggle('show')};
+  document.addEventListener('click',e=>{if(!e.target.closest('#user-menu')&&e.target.id!=='menu-btn')$('user-menu').classList.remove('show')});
+  $('menu-rename-map').onclick=()=>{
+    $('user-menu').classList.remove('show');
+    $('rename-map-input').value=atlas.mapName||`${atlas.ownerName}'s Friend Atlas`;
+    showOverlay('rename-map-modal');
   };
-  $('add-btn').onclick=openAdd;
-  $('cta-btn').onclick=openAdd;
-  $('add-close').onclick=()=>{$('add-modal').classList.remove('show');showJoinCTA()};
-  $('add-modal').onclick=e=>{if(e.target.id==='add-modal'){$('add-modal').classList.remove('show');showJoinCTA()}};
-
-  // City search
-  const cityInput=$('add-city'),dropdown=$('city-dropdown');
-  cityInput.oninput=function(){
-    selectedCity=null;$('city-badge').classList.remove('show');
-    const results=searchCities(this.value);
-    if(!results.length){dropdown.classList.remove('show');return}
-    dropdown.innerHTML='<div class="dropdown-header">Select a city</div>'+results.map((c,i)=>`<div class="dropdown-item" data-i="${i}"><div class="dropdown-city">${c.name}</div><div class="dropdown-country">${c.country}</div></div>`).join('');
-    dropdown.classList.add('show');
-    dropdown.querySelectorAll('.dropdown-item').forEach(el=>el.onclick=()=>{
-      const c=results[el.dataset.i];selectedCity=c;
-      cityInput.value=`${c.name}, ${c.country}`;
-      $('city-badge').textContent=`${c.name}, ${c.country}`;$('city-badge').classList.add('show');
-      dropdown.classList.remove('show');map.flyTo([c.lat,c.lng],5,{duration:.8});
-    });
+  $('menu-rename-owner').onclick=()=>{
+    $('user-menu').classList.remove('show');
+    $('rename-owner-input').value=atlas.ownerName;
+    showOverlay('rename-owner-modal');
   };
-  document.addEventListener('click',e=>{if(!e.target.closest('.city-wrap'))dropdown.classList.remove('show')});
-
-  // Submit pin
-  $('add-submit').onclick=async()=>{
-    const name=$('add-name').value.trim(),note=$('add-note').value.trim();
-    if(!name){$('add-error').textContent='Enter your name';$('add-error').classList.add('show');return}
-    if(!selectedCity){$('add-error').textContent='Select a city from the dropdown';$('add-error').classList.add('show');return}
-    const body=JSON.stringify({name,city:`${selectedCity.name}, ${selectedCity.country}`,country:selectedCity.country,lat:selectedCity.lat,lng:selectedCity.lng,note,color:selectedColor,referredBy:referrer});
-    let d;
-    try{d=await api(`/api/atlas/code/${atlas.code}/join-anon`,{method:'POST',body})}catch(e){$('add-error').textContent='Network error - check connection';$('add-error').classList.add('show');console.error('Join error:',e);return}
-    if(d.error){$('add-error').textContent=d.error;$('add-error').classList.add('show');return}
-    if(d.success){
-      const droppedId=d.friend.id;const cityName=selectedCity.name;myName=name;
-      $('add-modal').classList.remove('show');hideJoinCTA();
-      // Brief pause so modal fully clears before animation plays
-      await new Promise(r=>setTimeout(r,350));
-      lastDroppedId=droppedId;
-      await loadAtlas(atlas.code);hideJoinCTA();
-      showConfetti();toast(`${name} joined in ${cityName}`);
-      // Fly to the new pin
-      const newFriend=friends.find(f=>f.id===droppedId);
-      if(newFriend)map.flyTo([newFriend.lat,newFriend.lng],5,{duration:.8});
-      // Build post-drop card with member roster
-      const others=friends.filter(f=>f.id!==droppedId);
-      $('post-drop-desc').textContent=`You're on ${atlas.ownerName}'s atlas${others.length>0?` with ${others.length} other${others.length!==1?'s':''}`:''}`;
-      const membersEl=$('post-drop-members');
-      membersEl.innerHTML=friends.slice(0,6).map(f=>`<div class="post-drop-avatar" style="background:${getPinColor(f)}">${getInitials(f.name)}</div>`).join('')+(friends.length>6?`<div class="post-drop-count">+${friends.length-6}</div>`:'');
-      $('post-drop-invite').textContent=friends.length<4?`Invite ${4-friends.length} more to make it a party`:'';
-      setTimeout(()=>$('post-drop').classList.add('show'),1500);
-    }else{$('add-error').textContent=d.error||'Failed';$('add-error').classList.add('show')}
+  $('menu-switch').onclick=()=>{
+    $('user-menu').classList.remove('show');
+    localStorage.removeItem('lastAtlas');
+    location.href='/';
   };
-
-  // Post-drop actions
-  $('post-share-btn').onclick=()=>{$('post-drop').classList.remove('show');openShare()};
-  $('post-create-btn').onclick=()=>{$('post-drop').classList.remove('show');atlas=null;history.replaceState({},'','/');showWelcome()};
-  document.addEventListener('click',e=>{if($('post-drop').classList.contains('show')&&!e.target.closest('#post-drop'))$('post-drop').classList.remove('show')});
-
-  // Detail panel
-  $('detail-close').onclick=()=>select(null);
-  $('detail-remove').onclick=()=>{toRemove=selected;$('confirm-name').textContent=selected.name;$('confirm-modal').classList.add('show')};
-  $('confirm-cancel').onclick=()=>$('confirm-modal').classList.remove('show');
-  $('confirm-modal').onclick=e=>{if(e.target.id==='confirm-modal')$('confirm-modal').classList.remove('show')};
-  $('confirm-yes').onclick=async()=>{
-    const d=await api(`/api/atlas/${atlas.id}/friend/${toRemove.id}`,{method:'DELETE'});
-    if(d.success){$('confirm-modal').classList.remove('show');select(null);await loadAtlas(atlas.code);toast('Removed')}
-  };
-
-  // User menu
-  $('user-btn').onclick=()=>$('user-menu').classList.toggle('show');
-  document.addEventListener('click',e=>{if(!e.target.closest('#user-btn')&&!e.target.closest('#user-menu'))$('user-menu').classList.remove('show')});
-
-  // Menu actions
-  $('menu-switch').onclick=()=>{$('user-menu').classList.remove('show');hideJoinCTA();$('post-drop').classList.remove('show');localStorage.removeItem('lastAtlas');atlas=null;history.replaceState({},'','/');showWelcome()};
   $('menu-export').onclick=async()=>{
     $('user-menu').classList.remove('show');
-    const d=await api(`/api/atlas/${atlas.id}/export`);
-    if(d.atlas){const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`friend-atlas-${atlas.code}.json`;a.click();URL.revokeObjectURL(url);toast('Exported!')}
+    try{
+      const d=await api(`/api/atlas/${atlas.id}/export`);
+      const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=`friend-atlas-${atlas.code}.json`;a.click();
+      toast('Export downloaded');
+    }catch(e){toast('Export failed')}
   };
 
-  // Rename
-  $('menu-rename').onclick=()=>{
-    $('user-menu').classList.remove('show');
-    $('rename-input').value=atlas.ownerName;
-    $('rename-modal').classList.add('show');
-  };
-  $('rename-close').onclick=()=>$('rename-modal').classList.remove('show');
-  $('rename-modal').onclick=e=>{if(e.target.id==='rename-modal')$('rename-modal').classList.remove('show')};
-  $('rename-submit').onclick=async()=>{
-    const name=$('rename-input').value.trim();
-    if(!name)return;
-    const d=await api(`/api/atlas/code/${atlas.code}/rename`,{method:'PATCH',body:JSON.stringify({name})});
-    if(d.success){
-      $('rename-modal').classList.remove('show');
-      atlas.ownerName=d.name;render();toast('Renamed!');
-    }else{toast(d.error||'Failed to rename')}
-  };
-  $('rename-input').onkeydown=e=>{if(e.key==='Enter')$('rename-submit').click()};
+  // Search
+  $('search').addEventListener('input',()=>{
+    searchQuery=$('search').value;
+    renderPeoplePanel();
+    // Highlight matching pins on map
+    const q=searchQuery.trim().toLowerCase();
+    markers.forEach((m,i)=>{
+      const f=friends[i];if(!f)return;
+      const matches=!q||f.name.toLowerCase().includes(q)||f.city.toLowerCase().includes(q)||(f.country||'').toLowerCase().includes(q);
+      const el=m.getElement();if(!el)return;
+      el.style.opacity=matches?'1':'.2';
+    });
+  });
+
+  // Add modal
+  $('add-submit').onclick=submitPin;
+  bindCityAutocomplete();
+  renderColorPicker();
+
+  // Share modal
+  $('copy-link-btn').onclick=()=>copyText(`${location.origin}/join/${atlas.code}`,'Invite link copied');
+  $('copy-msg-btn').onclick=()=>copyText(buildShareMessage(),'Message copied');
+  $('share-native').onclick=e=>{e.preventDefault();nativeShare()};
+
+  // Rename modals
+  $('rename-map-submit').onclick=submitRenameMap;
+  $('rename-owner-submit').onclick=submitRenameOwner;
+  $('rename-map-input').addEventListener('keydown',e=>{if(e.key==='Enter')submitRenameMap()});
+  $('rename-owner-input').addEventListener('keydown',e=>{if(e.key==='Enter')submitRenameOwner()});
+
+  // Detail card close
+  $('detail-close').onclick=hideDetail;
+
+  // Confirm delete
+  $('confirm-cancel').onclick=()=>closeOverlay('confirm-modal');
+
+  // Post-drop celebration
+  $('post-share-btn').onclick=()=>{hideCelebration();openShareModal()};
+  $('post-close-btn').onclick=hideCelebration;
+
+  // Modal close buttons (data-close attribute)
+  document.querySelectorAll('[data-close]').forEach(b=>{
+    b.onclick=()=>closeOverlay(b.dataset.close);
+  });
+
+  // Esc closes top-most overlay
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+      const open=document.querySelectorAll('.overlay.show');
+      if(open.length)open[open.length-1].classList.remove('show');
+      else if($('post-drop').classList.contains('show'))hideCelebration();
+      else if($('detail').classList.contains('show'))hideDetail();
+    }
+  });
 }
 
-init();
+// ============ START ============
+window.openAddModal=openAddModal;
+window.openShareModal=openShareModal;
+window.shareViaSMS=shareViaSMS;
+window.focusFriend=focusFriend;
+wireEvents();
+boot();
 </script>
 </body>
 </html>

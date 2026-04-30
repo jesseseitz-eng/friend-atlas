@@ -20,6 +20,7 @@ const validate = (req, res, next) => {
 
 router.post('/create',
   body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('Name is required'),
+  body('mapName').optional({ values: 'falsy' }).isString().trim().isLength({ max: 120 }).withMessage('Map name too long (max 120 chars)'),
   validate,
   async (req, res) => {
   try {
@@ -51,8 +52,9 @@ router.post('/create',
       await db.findOrCreateUser({ id: ownerId, email: `${ownerId}@anon.local`, name: ownerName, profilePicture: null });
     }
 
-    const atlas = await db.createAtlas(code, ownerId, ownerName);
-    res.json({ success: true, atlas: { id: atlas.id, code: atlas.code, ownerName: atlas.owner_name, createdAt: atlas.created_at } });
+    const mapName = (req.body.mapName || '').trim() || null;
+    const atlas = await db.createAtlas(code, ownerId, ownerName, mapName);
+    res.json({ success: true, atlas: { id: atlas.id, code: atlas.code, ownerName: atlas.owner_name, mapName: atlas.map_name, createdAt: atlas.created_at } });
   } catch (error) {
     console.error('Create atlas error:', error);
     res.status(500).json({ error: 'Failed to create atlas' });
@@ -66,7 +68,7 @@ router.get('/code/:code', param('code').isString().isLength({ min: 6, max: 6 }).
     const friends = await db.getFriendsByAtlas(atlas.id);
     const stats = await db.getAtlasStats(atlas.id);
     res.json({
-      atlas: { id: atlas.id, code: atlas.code, ownerName: atlas.owner_name, ownerId: atlas.owner_id, createdAt: atlas.created_at },
+      atlas: { id: atlas.id, code: atlas.code, ownerName: atlas.owner_name, mapName: atlas.map_name, ownerId: atlas.owner_id, createdAt: atlas.created_at },
       friends: friends.map(f => ({
         id: f.id, name: f.name, city: f.city, country: f.country,
         lat: parseFloat(f.lat), lng: parseFloat(f.lng), note: f.note,
@@ -205,6 +207,60 @@ router.patch('/code/:code/rename',
     } catch (error) {
       console.error('Rename atlas error:', error);
       res.status(500).json({ error: 'Failed to rename atlas' });
+    }
+  }
+);
+
+// Rename the atlas's MAP NAME (the label of the map itself, e.g. "CBS Summer Map")
+router.patch('/code/:code/rename-map',
+  param('code').isString().isLength({ min: 6, max: 6 }).toUpperCase(),
+  body('mapName').optional({ values: 'null' }).isString().trim().isLength({ max: 120 }).withMessage('Map name too long (max 120 chars)'),
+  validate,
+  async (req, res) => {
+    try {
+      const sessionId = req.cookies?.anon_session;
+      if (!sessionId) return res.status(401).json({ error: 'No session' });
+      const atlas = await db.getAtlasByCode(req.params.code);
+      if (!atlas) return res.status(404).json({ error: 'Atlas not found' });
+      const ownerId = `anon_${sessionId.slice(0, 16)}`;
+      if (atlas.owner_id !== ownerId) return res.status(403).json({ error: 'Only the atlas creator can rename the map' });
+      const mapName = (req.body.mapName || '').trim() || null;
+      await db.pool.query('UPDATE atlases SET map_name = $1, updated_at = NOW() WHERE id = $2', [mapName, atlas.id]);
+      res.json({ success: true, mapName });
+    } catch (error) {
+      console.error('Rename map error:', error);
+      res.status(500).json({ error: 'Failed to rename map' });
+    }
+  }
+);
+
+// Remove a friend pin (by anon session)
+router.delete('/:atlasId/friend/:friendId', param('atlasId').isInt(), param('friendId').isInt(), validate, async (req, res) => {
+  try {
+    const sessionId = req.cookies?.anon_session;
+    if (!sessionId) return res.status(401).json({ error: 'No session' });
+    const deleted = await db.removeFriendBySession(req.params.friendId, sessionId);
+    if (!deleted) return res.status(404).json({ error: 'Friend not found or unauthorized' });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Remove friend error:', error);
+    res.status(500).json({ error: 'Failed to remove friend' });
+  }
+});
+
+module.exports = router;
+ession;
+      if (!sessionId) return res.status(401).json({ error: 'No session' });
+      const atlas = await db.getAtlasByCode(req.params.code);
+      if (!atlas) return res.status(404).json({ error: 'Atlas not found' });
+      const ownerId = `anon_${sessionId.slice(0, 16)}`;
+      if (atlas.owner_id !== ownerId) return res.status(403).json({ error: 'Only the atlas creator can rename the map' });
+      const mapName = (req.body.mapName || '').trim() || null;
+      await db.pool.query('UPDATE atlases SET map_name = $1, updated_at = NOW() WHERE id = $2', [mapName, atlas.id]);
+      res.json({ success: true, mapName });
+    } catch (error) {
+      console.error('Rename map error:', error);
+      res.status(500).json({ error: 'Failed to rename map' });
     }
   }
 );
