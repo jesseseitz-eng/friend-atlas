@@ -249,34 +249,3 @@ router.delete('/:atlasId/friend/:friendId', param('atlasId').isInt(), param('fri
 });
 
 module.exports = router;
-ession;
-      if (!sessionId) return res.status(401).json({ error: 'No session' });
-      const atlas = await db.getAtlasByCode(req.params.code);
-      if (!atlas) return res.status(404).json({ error: 'Atlas not found' });
-      const ownerId = `anon_${sessionId.slice(0, 16)}`;
-      if (atlas.owner_id !== ownerId) return res.status(403).json({ error: 'Only the atlas creator can rename the map' });
-      const mapName = (req.body.mapName || '').trim() || null;
-      await db.pool.query('UPDATE atlases SET map_name = $1, updated_at = NOW() WHERE id = $2', [mapName, atlas.id]);
-      res.json({ success: true, mapName });
-    } catch (error) {
-      console.error('Rename map error:', error);
-      res.status(500).json({ error: 'Failed to rename map' });
-    }
-  }
-);
-
-// Remove a friend pin (by anon session)
-router.delete('/:atlasId/friend/:friendId', param('atlasId').isInt(), param('friendId').isInt(), validate, async (req, res) => {
-  try {
-    const sessionId = req.cookies?.anon_session;
-    if (!sessionId) return res.status(401).json({ error: 'No session' });
-    const deleted = await db.removeFriendBySession(req.params.friendId, sessionId);
-    if (!deleted) return res.status(404).json({ error: 'Friend not found or unauthorized' });
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Remove friend error:', error);
-    res.status(500).json({ error: 'Failed to remove friend' });
-  }
-});
-
-module.exports = router;

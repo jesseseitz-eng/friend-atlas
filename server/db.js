@@ -226,9 +226,3 @@ module.exports = {
   removeFriend, getAtlasStats, exportAtlas, addAnonymousFriend,
   claimAnonymousFriends, removeFriendBySession, getMembershipsByUser,
 };
- {
-  pool, initialize, findOrCreateUser, createAtlas, getAtlasByCode,
-  getAtlasesByOwner, deleteAtlas, addOrUpdateFriend, getFriendsByAtlas,
-  removeFriend, getAtlasStats, exportAtlas, addAnonymousFriend,
-  claimAnonymousFriends, removeFriendBySession, getMembershipsByUser,
-};
