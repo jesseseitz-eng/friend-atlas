@@ -224,11 +224,3 @@ router.delete('/:atlasId/friend/:friendId', param('atlasId').isInt(), param('fri
 });
 
 module.exports = router;
-ccess: true });
-  } catch (error) {
-    console.error('Remove friend error:', error);
-    res.status(500).json({ error: 'Failed to remove friend' });
-  }
-});
-
-module.exports = router;
