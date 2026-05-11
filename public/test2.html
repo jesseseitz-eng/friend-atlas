@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Friend Atlas Test 2</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{min-height:100vh;font-family:Inter,system-ui,sans-serif;background:#fbf7ef;color:#241f1a}
+    button,input{font:inherit}
+    .shell{min-height:100vh;display:grid;grid-template-rows:auto 1fr}
+    header{height:70px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;border-bottom:1px solid #e4dbcd;background:#fffaf2}
+    .brand{font-weight:800}.actions{display:flex;gap:10px}.btn{border:1px solid #d8cbb9;background:#fffaf2;border-radius:8px;padding:10px 14px;font-weight:700}.btn.primary{background:#e85d3f;border-color:#e85d3f;color:white}
+    .main{display:grid;grid-template-columns:330px 1fr 360px;min-height:0}
+    .left,.right{padding:22px;border-right:1px solid #e4dbcd;overflow:auto}.right{border-right:0;border-left:1px solid #e4dbcd;background:#fffaf2}
+    h1{font-family:Fraunces,serif;font-size:38px;line-height:1;margin-bottom:14px}.sub{color:#6d6258;font-size:14px;line-height:1.5;margin-bottom:20px}
+    .search{width:100%;border:1px solid #d8cbb9;background:white;border-radius:8px;padding:13px;margin-bottom:16px}
+    .place{border:1px solid #e4dbcd;background:white;border-radius:8px;padding:14px;margin-bottom:10px}
+    .place.active{border-color:#e85d3f;box-shadow:0 0 0 2px rgba(232,93,63,.12)}.place h3{font-size:15px}.place p{font-size:12px;color:#6d6258;margin-top:4px}
+    .map-stage{position:relative;overflow:hidden;background:#dfeadf}
+    .map-stage svg{position:absolute;inset:0;width:100%;height:100%}
+    .route{fill:none;stroke:#e85d3f;stroke-width:4;stroke-linecap:round;stroke-dasharray:10 12;opacity:.75}
+    .stamp{position:absolute;background:#fffaf2;border:1px solid #d8cbb9;border-radius:8px;padding:14px;box-shadow:0 18px 45px rgba(70,50,30,.14)}
+    .stamp h2{font-family:Fraunces,serif;font-size:28px}.stamp p{font-size:13px;color:#6d6258;margin-top:4px}
+    .s1{left:8%;top:12%;width:260px}.s2{right:8%;bottom:12%;width:280px}
+    .pin{position:absolute;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:white;font-weight:800;border:3px solid #fffaf2;box-shadow:0 12px 24px rgba(70,50,30,.25)}
+    .pin.one{left:35%;top:36%;background:#e85d3f}.pin.two{left:54%;top:44%;background:#347f70}.pin.three{left:65%;top:30%;background:#4464ad}.pin.four{left:48%;top:66%;background:#c68a1d}
+    .section-title{font-size:12px;text-transform:uppercase;font-weight:800;color:#8a7d70;margin-bottom:10px}
+    .rec{padding:13px 0;border-bottom:1px solid #e4dbcd}.rec h3{font-size:15px}.rec p{font-size:13px;color:#6d6258;margin-top:4px}.tag{display:inline-block;margin-top:8px;border-radius:999px;background:#f1e4d8;color:#8f3b28;font-size:11px;font-weight:800;padding:4px 8px}
+    @media(max-width:1040px){.main{grid-template-columns:1fr}.map-stage{height:58vh}.left,.right{border:0;border-top:1px solid #e4dbcd}.stamp{position:relative;left:auto;right:auto;top:auto;bottom:auto;margin:18px;width:auto}.s2{display:none}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header><div class="brand">Friend Atlas</div><div class="actions"><button class="btn">Invite</button><button class="btn primary">Add Places</button></div></header>
+    <main class="main">
+      <aside class="left">
+        <h1>Your people, by place.</h1>
+        <p class="sub">Cities, people, and notes from friends who know the place.</p>
+        <input class="search" value="Where are you going? Lisbon" aria-label="Search">
+        <article class="place active"><h3>Lisbon</h3><p>3 friends. 17 recs. Sarah lived here; Marco is from nearby.</p></article>
+        <article class="place"><h3>Mexico City</h3><p>5 friends. Food, museums, neighborhoods, practical tips.</p></article>
+        <article class="place"><h3>Copenhagen</h3><p>2 friends. Cafes, bikes, one very specific bakery.</p></article>
+      </aside>
+      <section class="map-stage">
+        <svg viewBox="0 0 900 700" aria-hidden="true">
+          <g fill="#cddfcf" stroke="#b6cfb8" stroke-width="2">
+            <path d="M70 180 C160 80 310 120 330 240 C345 335 220 385 120 335 C45 295 30 230 70 180Z"/>
+            <path d="M380 150 C520 80 715 120 805 245 C885 360 785 500 610 485 C450 470 320 300 380 150Z"/>
+            <path d="M335 470 C440 425 560 500 535 620 C510 710 370 705 320 610 C285 540 290 495 335 470Z"/>
+          </g>
+          <path class="route" d="M310 250 C420 230 475 285 520 350 S650 410 700 320"/>
+        </svg>
+        <div class="stamp s1"><h2>Lisbon</h2><p>Sarah, Jesse, and Marco know the city. 17 recommendations saved.</p></div>
+        <div class="stamp s2"><h2>Before you book</h2><p>Ask Sarah about dinner. Ask Jesse about cafes for working.</p></div>
+        <div class="pin one">SA</div><div class="pin two">JM</div><div class="pin three">MB</div><div class="pin four">VR</div>
+      </section>
+      <aside class="right">
+        <div class="section-title">Lisbon recs</div>
+        <article class="rec"><h3>Cervejaria Ramiro</h3><p>Sarah says go early and order more shrimp than feels reasonable.</p><span class="tag">Eat</span></article>
+        <article class="rec"><h3>Miradouro da Graca</h3><p>Marco's favorite sunset view when friends visit for the first time.</p><span class="tag">Do</span></article>
+        <article class="rec"><h3>Hello, Kristof</h3><p>Jesse's laptop-friendly cafe pick near the center.</p><span class="tag">Coffee</span></article>
+        <article class="rec"><h3>Text before Sintra</h3><p>Sarah has strong opinions on timing and what to skip.</p><span class="tag">Tip</span></article>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Friend Atlas Test 3</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{height:100vh;font-family:Inter,system-ui,sans-serif;background:#151814;color:#f5f2e8;overflow:hidden}
+    button,input{font:inherit}
+    .screen{position:relative;height:100vh;overflow:hidden;background:radial-gradient(circle at 50% 42%,#324331 0,#20271f 42%,#151814 100%)}
+    .world{position:absolute;inset:0;width:100%;height:100%;opacity:.92}
+    .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(245,242,232,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(245,242,232,.06) 1px,transparent 1px);background-size:72px 72px;mask-image:radial-gradient(circle,black 35%,transparent 78%)}
+    header{position:absolute;top:18px;left:22px;right:22px;display:flex;align-items:center;justify-content:space-between;z-index:5}
+    .brand{font-weight:900;letter-spacing:0}.nav{display:flex;gap:9px}.nav button{border:1px solid rgba(245,242,232,.18);background:rgba(245,242,232,.08);color:#f5f2e8;border-radius:8px;padding:10px 13px;font-weight:800}.nav .primary{background:#b8ef5a;color:#151814;border-color:#b8ef5a}
+    .command{position:absolute;left:50%;top:76px;transform:translateX(-50%);width:min(640px,calc(100vw - 44px));z-index:4;background:rgba(21,24,20,.72);border:1px solid rgba(245,242,232,.18);border-radius:8px;padding:12px;display:flex;gap:10px;box-shadow:0 20px 60px rgba(0,0,0,.35);backdrop-filter:blur(14px)}
+    .command input{flex:1;border:0;background:#f5f2e8;color:#151814;border-radius:8px;padding:13px;font-weight:700}.command button{border:0;background:#ff7a59;color:#151814;border-radius:8px;padding:0 15px;font-weight:900}
+    .pin{position:absolute;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:900;color:#151814;border:2px solid #f5f2e8;box-shadow:0 0 0 7px rgba(184,239,90,.10),0 14px 30px rgba(0,0,0,.38)}
+    .a{left:27%;top:37%;background:#ff7a59}.b{left:48%;top:34%;background:#b8ef5a}.c{left:56%;top:43%;background:#7dd3fc}.d{left:71%;top:46%;background:#f8d66d}.e{left:42%;top:66%;background:#c084fc}.f{left:82%;top:70%;background:#5eead4}
+    .dock{position:absolute;left:22px;right:22px;bottom:20px;z-index:6;display:grid;grid-template-columns:280px 1fr 320px;gap:12px}
+    .panel{background:rgba(21,24,20,.80);border:1px solid rgba(245,242,232,.18);border-radius:8px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.32);backdrop-filter:blur(16px)}
+    .metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:rgba(245,242,232,.08);border-radius:8px;padding:12px}.metric strong{display:block;font-size:25px}.metric span{font-size:11px;color:#c9c4b8;text-transform:uppercase;font-weight:800}
+    .city h1{font-size:28px;margin-bottom:6px}.city p{color:#c9c4b8;font-size:13px}.friends{display:flex;gap:8px;margin-top:14px}.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:900;color:#151814;border:2px solid #f5f2e8}
+    .rec{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(245,242,232,.12)}.rec:last-child{border-bottom:0}.rec strong{font-size:13px}.rec span{color:#c9c4b8;font-size:12px}.pill{border-radius:999px;background:rgba(184,239,90,.14);color:#b8ef5a;padding:4px 7px;font-size:11px;font-weight:900;white-space:nowrap}
+    @media(max-width:940px){body{overflow:auto}.screen{min-height:100vh;height:auto;padding-bottom:520px}.dock{grid-template-columns:1fr}.command{top:80px}.world{height:70vh}.grid{height:70vh}}
+  </style>
+</head>
+<body>
+  <div class="screen">
+    <svg class="world" viewBox="0 0 1200 760" aria-hidden="true">
+      <g fill="#4c6249" stroke="#6f846a" stroke-width="2">
+        <path d="M105 250 C205 120 360 165 365 285 C370 390 230 430 125 360 C60 316 58 290 105 250Z"/>
+        <path d="M410 225 C505 135 650 172 700 265 C745 350 675 450 550 438 C430 426 345 318 410 225Z"/>
+        <path d="M715 185 C880 100 1080 180 1125 322 C1168 460 990 555 820 495 C700 452 625 300 715 185Z"/>
+        <path d="M500 500 C600 455 700 535 675 650 C650 738 515 720 468 628 C435 560 442 525 500 500Z"/>
+      </g>
+    </svg>
+    <div class="grid"></div>
+    <header><div class="brand">Friend Atlas</div><nav class="nav"><button>Invite</button><button class="primary">Add Places</button></nav></header>
+    <div class="command"><input value="Tokyo, Lisbon, Mexico City..." aria-label="Search"><button>Find</button></div>
+    <div class="pin a">SA</div><div class="pin b">JM</div><div class="pin c">MB</div><div class="pin d">NK</div><div class="pin e">VR</div><div class="pin f">NO</div>
+    <section class="dock">
+      <div class="panel metric-grid">
+        <div class="metric"><strong>42</strong><span>People</span></div>
+        <div class="metric"><strong>68</strong><span>Places</span></div>
+        <div class="metric"><strong>31</strong><span>Cities</span></div>
+        <div class="metric"><strong>214</strong><span>Recs</span></div>
+      </div>
+      <div class="panel city">
+        <h1>Lisbon is warm.</h1>
+        <p>Three friends know Lisbon. Sarah lived there, Jesse has cafe notes, and Marco is the person to text before booking dinner.</p>
+        <div class="friends"><div class="avatar" style="background:#ff7a59">SA</div><div class="avatar" style="background:#b8ef5a">JM</div><div class="avatar" style="background:#7dd3fc">MB</div></div>
+      </div>
+      <div class="panel">
+        <div class="rec"><div><strong>Ramiro</strong><br><span>Seafood, go early</span></div><div class="pill">Eat</div></div>
+        <div class="rec"><div><strong>Graca sunset</strong><br><span>Marco's first-night walk</span></div><div class="pill">Do</div></div>
+        <div class="rec"><div><strong>Ask Sarah</strong><br><span>Sintra timing</span></div><div class="pill">Tip</div></div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

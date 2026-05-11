@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Friend Atlas Test 1</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{height:100vh;font-family:Inter,system-ui,sans-serif;color:#17202a;background:#eef4f7;overflow:hidden}
+    button,input{font:inherit}
+    .app{height:100vh;display:grid;grid-template-columns:minmax(0,1fr) 390px}
+    .map{position:relative;overflow:hidden;background:#dfeef2}
+    .map svg{position:absolute;inset:0;width:100%;height:100%}
+    .map::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(23,32,42,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(23,32,42,.07) 1px,transparent 1px);background-size:80px 80px;opacity:.45}
+    .topbar{position:absolute;top:18px;left:18px;right:18px;height:58px;background:rgba(255,255,255,.92);border:1px solid rgba(23,32,42,.12);border-radius:8px;display:flex;align-items:center;gap:12px;padding:0 14px;box-shadow:0 14px 40px rgba(23,32,42,.12)}
+    .brand{font-weight:800;min-width:118px}
+    .search{flex:1;border:1px solid rgba(23,32,42,.12);background:#f7fafb;border-radius:8px;padding:11px 13px;color:#17202a}
+    .btn{border:0;border-radius:8px;background:#2563eb;color:white;font-weight:700;padding:11px 14px}
+    .pin{position:absolute;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:white;font-size:12px;font-weight:800;border:3px solid white;box-shadow:0 10px 24px rgba(23,32,42,.28);transform:translate(-50%,-50%)}
+    .pin::after{content:"";position:absolute;inset:-9px;border:1px solid currentColor;border-radius:50%;opacity:.35}
+    .p1{left:23%;top:38%;background:#fb7185;color:#fb7185}.p2{left:49%;top:33%;background:#2563eb;color:#2563eb}.p3{left:52%;top:43%;background:#f97316;color:#f97316}.p4{left:73%;top:45%;background:#10b981;color:#10b981}.p5{left:43%;top:66%;background:#8b5cf6;color:#8b5cf6}.p6{left:82%;top:72%;background:#0ea5e9;color:#0ea5e9}
+    .map-note{position:absolute;left:18px;bottom:18px;background:rgba(255,255,255,.92);border:1px solid rgba(23,32,42,.12);border-radius:8px;padding:12px 14px;display:flex;gap:18px;box-shadow:0 14px 40px rgba(23,32,42,.12)}
+    .metric strong{display:block;font-size:20px}.metric span{font-size:11px;text-transform:uppercase;color:#596773;font-weight:700}
+    .panel{background:white;border-left:1px solid rgba(23,32,42,.12);display:flex;flex-direction:column;min-width:0}
+    .panel-head{padding:20px;border-bottom:1px solid rgba(23,32,42,.10)}
+    h1{font-size:22px;line-height:1.1;margin-bottom:6px}.muted{color:#596773;font-size:13px}
+    .tabs{display:flex;gap:8px;margin-top:16px}.tab{border:1px solid rgba(23,32,42,.12);background:#f5f8fa;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700}.tab.active{background:#17202a;color:white}
+    .content{overflow:auto;padding:16px 16px 24px}
+    .city{margin-bottom:20px}.city-title{display:flex;justify-content:space-between;align-items:end;margin-bottom:8px;font-weight:800}.city-title span{font-size:12px;color:#596773;font-weight:600}
+    .person{display:grid;grid-template-columns:38px 1fr;gap:10px;padding:11px;border:1px solid rgba(23,32,42,.10);background:#f8fbfc;border-radius:8px;margin-bottom:8px}
+    .avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:white;font-weight:800;background:#2563eb}
+    .person h3{font-size:14px}.person p{font-size:12px;color:#596773;margin-top:2px}
+    .recs{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}.chip{font-size:11px;font-weight:700;color:#0f766e;background:rgba(20,184,166,.12);border-radius:999px;padding:4px 8px}
+    @media(max-width:900px){body{overflow:auto}.app{height:auto;min-height:100vh;grid-template-columns:1fr}.map{height:58vh}.panel{border-left:0}.topbar{height:auto;align-items:stretch;flex-wrap:wrap;padding:12px}.brand{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="map">
+      <svg viewBox="0 0 1200 760" aria-hidden="true">
+        <g fill="#c7dde5" stroke="#b6d0da" stroke-width="2">
+          <path d="M110 230 C190 140 310 170 330 250 C350 340 220 380 150 330 C90 290 80 260 110 230Z"/>
+          <path d="M355 235 C430 170 540 190 590 250 C630 300 600 380 505 395 C420 408 350 335 355 235Z"/>
+          <path d="M640 205 C780 120 930 180 1000 270 C1070 360 1000 470 850 470 C720 470 610 360 640 205Z"/>
+          <path d="M480 475 C560 440 640 510 620 610 C600 710 480 705 440 615 C410 548 425 500 480 475Z"/>
+          <path d="M845 535 C930 500 1045 550 1085 635 C1030 700 900 705 835 635 C800 595 805 555 845 535Z"/>
+        </g>
+      </svg>
+      <div class="topbar">
+        <div class="brand">Friend Atlas</div>
+        <input class="search" value="Lisbon" aria-label="Search city">
+        <button class="btn">Add Place</button>
+      </div>
+      <div class="pin p1" style="color:white">SA</div>
+      <div class="pin p2" style="color:white">JM</div>
+      <div class="pin p3" style="color:white">AL</div>
+      <div class="pin p4" style="color:white">MK</div>
+      <div class="pin p5" style="color:white">VR</div>
+      <div class="pin p6" style="color:white">NO</div>
+      <div class="map-note">
+        <div class="metric"><strong>42</strong><span>People</span></div>
+        <div class="metric"><strong>68</strong><span>Places</span></div>
+        <div class="metric"><strong>214</strong><span>Recs</span></div>
+      </div>
+    </section>
+    <aside class="panel">
+      <div class="panel-head">
+        <h1>Who do you know there?</h1>
+        <p class="muted">Lisbon before the June trip.</p>
+        <div class="tabs"><button class="tab active">Lisbon</button><button class="tab">Nearby</button><button class="tab">Saved</button></div>
+      </div>
+      <div class="content">
+        <section class="city">
+          <div class="city-title">Lisbon <span>3 friends, 17 recs</span></div>
+          <article class="person"><div class="avatar" style="background:#fb7185">SA</div><div><h3>Sarah A.</h3><p>Lived here after college. Best for food and day trips.</p></div><div class="recs"><span class="chip">Seafood</span><span class="chip">Alfama walk</span><span class="chip">Sintra day</span></div></article>
+          <article class="person"><div class="avatar" style="background:#2563eb">JM</div><div><h3>Jesse M.</h3><p>Knows the cafe scene and where to work for a day.</p></div><div class="recs"><span class="chip">Coffee</span><span class="chip">Coworking</span></div></article>
+        </section>
+        <section class="city">
+          <div class="city-title">Porto <span>2 friends, 8 recs</span></div>
+          <article class="person"><div class="avatar" style="background:#f97316">AL</div><div><h3>Ana L.</h3><p>From here. Text before you book dinner.</p></div><div class="recs"><span class="chip">Wine bar</span><span class="chip">Riverside</span></div></article>
+        </section>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

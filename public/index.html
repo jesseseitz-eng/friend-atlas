@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Friend Atlas — Where are your people?</title>
-  <meta name="description" content="Create a private shared map for your friends, classmates, family, or travel crew. Drop pins, see where everyone is.">
+  <meta name="description" content="Create a private shared map of where your friends live, where they are from, and what they recommend.">
   <meta property="og:title" content="Friend Atlas">
-  <meta property="og:description" content="Create a private shared map for your friends, classmates, family, or travel crew. Drop pins, see where everyone is.">
+  <meta property="og:description" content="Create a private shared map of where your friends live, where they are from, and what they recommend.">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="theme-color" content="#0a0a0f">
+  <meta name="theme-color" content="#eef4f7">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -17,14 +17,14 @@
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     :root{
-      /* Dark theme (atlas/map view) */
-      --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--surface3:#222233;
-      --border:rgba(255,255,255,.08);--border-hover:rgba(255,255,255,.16);
-      --text:#f1f1f4;--text2:#9898a6;--text3:#5a5a6e;
-      --accent:#7c3aed;--accent2:#a78bfa;--accent-glow:rgba(124,58,237,.3);
+      /* Light atlas/map view */
+      --bg:#eef4f7;--surface:#ffffff;--surface2:#f5f8fa;--surface3:#e7eef3;
+      --border:rgba(23,32,42,.12);--border-hover:rgba(23,32,42,.22);
+      --text:#17202a;--text2:#596773;--text3:#8996a2;
+      --accent:#2563eb;--accent2:#f97316;--accent-glow:rgba(37,99,235,.18);
       --coral:#fb7185;--blue:#60a5fa;--green:#34d399;--gold:#facc15;--pink:#f472b6;
       --success:#34d399;--danger:#f43f5e;
-      --radius:16px;--radius-sm:10px;--radius-lg:24px;
+      --radius:8px;--radius-sm:6px;--radius-lg:8px;
       /* Cream theme (welcome/homepage view) */
       --cream-bg:#fdfaf3;--cream-surface:#ffffff;--cream-border:#e8e4dc;
       --cream-text:#1a1a26;--cream-text2:#6b6b78;--cream-shadow:0 4px 24px rgba(0,0,0,.06);
@@ -49,27 +49,27 @@
     /* ----- WELCOME / HOMEPAGE ----- */
     #welcome{min-height:100vh;background:var(--cream-bg);color:var(--cream-text);padding:32px 24px 64px;display:flex;flex-direction:column}
     .welcome-nav{display:flex;justify-content:space-between;align-items:center;margin:0 auto;width:100%;max-width:1100px;margin-bottom:48px}
-    .welcome-nav .brand{font-size:18px;font-weight:800;letter-spacing:-.01em}
+    .welcome-nav .brand{font-size:18px;font-weight:800;letter-spacing:0}
     .welcome-nav .brand-emoji{margin-right:6px}
     .welcome-main{margin:0 auto;width:100%;max-width:1100px;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;flex:1}
     @media(max-width:880px){.welcome-main{grid-template-columns:1fr;gap:40px}}
-    .hero h1{font-size:60px;font-weight:900;letter-spacing:-.03em;line-height:1.05;margin-bottom:20px;color:var(--cream-text)}
+    .hero h1{font-size:60px;font-weight:900;letter-spacing:0;line-height:1.05;margin-bottom:20px;color:var(--cream-text)}
     @media(max-width:640px){.hero h1{font-size:42px}}
     .hero .lead{font-size:18px;line-height:1.55;color:var(--cream-text2);margin-bottom:32px;max-width:520px}
     .hero-cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
     .privacy-note{font-size:13px;color:var(--cream-text2);display:inline-flex;align-items:center;gap:6px}
 
     /* Sample card */
-    .sample-card{background:var(--cream-surface);border:1px solid var(--cream-border);border-radius:20px;padding:24px;box-shadow:var(--cream-shadow)}
+    .sample-card{background:var(--cream-surface);border:1px solid var(--cream-border);border-radius:8px;padding:24px;box-shadow:var(--cream-shadow)}
     .sample-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--cream-border)}
     .sample-title{font-size:18px;font-weight:700}
     .sample-meta{font-size:12px;color:var(--cream-text2)}
-    .sample-map{height:220px;background:#f1ede4;border-radius:12px;position:relative;overflow:hidden;margin-bottom:16px}
+    .sample-map{height:220px;background:#eaf2f4;border-radius:8px;position:relative;overflow:hidden;margin-bottom:16px}
     .sample-map svg{width:100%;height:100%;display:block}
     .sample-pin{position:absolute;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.2);transform:translate(-50%,-100%)}
     .sample-pin::after{content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid currentColor}
     .sample-list{display:flex;flex-direction:column;gap:8px}
-    .sample-row{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;font-size:14px}
+    .sample-row{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;font-size:14px}
     .sample-row strong{font-weight:600}
     .avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:13px;flex-shrink:0}
     .avatar.coral{background:var(--coral)}
@@ -80,11 +80,11 @@
     .avatar.pink{background:var(--pink)}
 
     /* Buttons (cream theme) */
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;border:1px solid transparent;transition:transform .1s,background .15s,box-shadow .15s;white-space:nowrap}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:8px;font-weight:600;font-size:14px;border:1px solid transparent;transition:transform .1s,background .15s,box-shadow .15s;white-space:nowrap}
     .btn:active{transform:scale(.97)}
-    .btn-lg{padding:14px 22px;font-size:15px;border-radius:12px}
+    .btn-lg{padding:14px 22px;font-size:15px;border-radius:8px}
     .btn-primary{background:var(--accent);color:white;border-color:var(--accent)}
-    .btn-primary:hover{background:#6d28d9}
+    .btn-primary:hover{background:#1d4ed8}
     .btn-secondary{background:var(--cream-surface);color:var(--cream-text);border-color:var(--cream-border)}
     .btn-secondary:hover{background:#f4f0e7}
     .btn-ghost{background:transparent;color:var(--cream-text);border-color:var(--cream-border)}
@@ -94,7 +94,7 @@
     .btn-icon{width:38px;height:38px;padding:0;font-size:18px}
     .btn-full{width:100%}
 
-    /* Dark-themed buttons (used in atlas view + modals) */
+    /* Atlas-themed buttons (used in atlas view + modals) */
     .atlas-mode .btn-secondary{background:var(--surface2);color:var(--text);border-color:var(--border)}
     .atlas-mode .btn-secondary:hover{background:var(--surface3);border-color:var(--border-hover)}
     .atlas-mode .btn-ghost{background:transparent;color:var(--text2);border-color:var(--border)}
@@ -104,34 +104,34 @@
 
     /* ----- ATLAS / MAP VIEW ----- */
     #atlas{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
-    .atlas-header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface);z-index:20;position:relative}
+    .atlas-header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.94);z-index:20;position:relative;box-shadow:0 1px 12px rgba(23,32,42,.06)}
     .atlas-title-block{min-width:0;flex:1}
-    .map-name{font-size:18px;font-weight:800;letter-spacing:-.01em;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .map-name{font-size:18px;font-weight:800;letter-spacing:0;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .owner-name{font-size:12px;color:var(--text2);margin-top:2px}
     .owner-name strong{color:var(--text)}
     .atlas-actions{display:flex;gap:8px;align-items:center}
-    #user-menu{position:absolute;top:60px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:6px;min-width:200px;box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:50;display:none}
+    #user-menu{position:absolute;top:60px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px;min-width:200px;box-shadow:0 12px 32px rgba(23,32,42,.16);z-index:50;display:none}
     #user-menu.show{display:block}
-    .menu-item{display:flex;width:100%;align-items:center;gap:8px;padding:10px 12px;border:none;background:transparent;color:var(--text);font-size:14px;border-radius:8px;text-align:left}
+    .menu-item{display:flex;width:100%;align-items:center;gap:8px;padding:10px 12px;border:none;background:transparent;color:var(--text);font-size:14px;border-radius:6px;text-align:left}
     .menu-item:hover{background:var(--surface2)}
 
     .atlas-body{display:grid;grid-template-columns:1fr 360px;flex:1;min-height:0}
     @media(max-width:900px){.atlas-body{grid-template-columns:1fr;grid-template-rows:55vh 1fr}}
-    .map-area{position:relative;background:var(--surface)}
+    .map-area{position:relative;background:var(--surface2)}
     #map{position:absolute;inset:0;background:var(--bg)}
     .leaflet-container{background:var(--bg) !important}
-    .leaflet-control-attribution{background:rgba(18,18,26,.7) !important;color:var(--text3) !important;font-size:10px !important}
+    .leaflet-control-attribution{background:rgba(255,255,255,.78) !important;color:var(--text3) !important;font-size:10px !important}
     .leaflet-control-zoom a{background:var(--surface) !important;color:var(--text) !important;border-color:var(--border) !important}
     .leaflet-control-zoom a:hover{background:var(--surface2) !important}
 
-    .people-panel{background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+    .people-panel{background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;box-shadow:-8px 0 24px rgba(23,32,42,.06)}
     @media(max-width:900px){.people-panel{border-left:none;border-top:1px solid var(--border)}}
-    .stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:14px}
-    .stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center}
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px}
+    .stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 6px;text-align:center}
     .stat-num{font-size:22px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
-    .stat-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;font-weight:600}
+    .stat-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0;margin-top:2px;font-weight:600}
     .search-box{padding:0 14px 12px}
-    .search-box input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:14px;font-family:inherit}
+    .search-box input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-size:14px;font-family:inherit}
     .search-box input:focus{outline:none;border-color:var(--accent2)}
     #people-content{flex:1;overflow-y:auto;padding:0 14px 18px}
 
@@ -139,7 +139,7 @@
     .empty-checklist{padding:8px}
     .empty-title{font-size:18px;font-weight:700;margin-bottom:6px;color:var(--text)}
     .empty-sub{font-size:13px;color:var(--text2);margin-bottom:18px}
-    .check-item{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--surface2);transition:border-color .15s}
+    .check-item{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface2);transition:border-color .15s}
     .check-item.done{opacity:.6}
     .check-item.done .check-circle{background:var(--success);border-color:var(--success);color:white}
     .check-item.done .check-circle::after{content:'✓';font-size:14px}
@@ -151,16 +151,20 @@
 
     /* Friend list grouped by city */
     .city-group{margin-bottom:18px}
-    .city-header{display:flex;align-items:baseline;gap:8px;padding:6px 4px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700}
+    .city-header{display:flex;align-items:baseline;gap:8px;padding:6px 4px 8px;font-size:11px;text-transform:uppercase;letter-spacing:0;color:var(--text3);font-weight:700}
     .city-header .flag{font-size:16px}
-    .city-header .city-name{color:var(--text2);font-size:12px;letter-spacing:.04em}
+    .city-header .city-name{color:var(--text2);font-size:12px;letter-spacing:0}
     .city-header .city-count{color:var(--text3);margin-left:auto;font-size:10px}
-    .friend-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:background .12s,border-color .12s}
+    .friend-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;cursor:pointer;border:1px solid transparent;transition:background .12s,border-color .12s}
     .friend-card:hover{background:var(--surface2);border-color:var(--border)}
     .friend-card.highlighted{background:var(--surface2);border-color:var(--accent2)}
     .friend-card .avatar{width:36px;height:36px;font-size:14px}
     .friend-name{font-size:14px;font-weight:600;color:var(--text)}
     .friend-meta{font-size:12px;color:var(--text2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+    .friend-tags{display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap}
+    .place-chip,.rec-count{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0;border-radius:999px;padding:3px 7px}
+    .place-chip{color:#0f766e;background:rgba(20,184,166,.12)}
+    .rec-count{color:var(--accent);background:rgba(37,99,235,.10)}
     .friend-time{font-size:10px;color:var(--text3);margin-left:auto;flex-shrink:0}
 
     /* Pin markers (Leaflet) */
@@ -168,28 +172,28 @@
     .pin-marker.loaded{transform:scale(1)}
 
     /* Modals */
-    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:flex-start;justify-content:center;padding:32px 16px;z-index:100;overflow-y:auto;backdrop-filter:blur(4px)}
+    .overlay{position:fixed;inset:0;background:rgba(23,32,42,.38);display:none;align-items:flex-start;justify-content:center;padding:32px 16px;z-index:100;overflow-y:auto;backdrop-filter:blur(4px)}
     .overlay.show{display:flex}
-    .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:440px;margin:0 auto auto;position:relative}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:28px;width:100%;max-width:480px;margin:0 auto auto;position:relative;box-shadow:0 18px 50px rgba(23,32,42,.18)}
     .modal h2{font-size:20px;font-weight:700;margin-bottom:6px;color:var(--text)}
     .modal .modal-desc{font-size:13px;color:var(--text2);margin-bottom:18px}
     .modal-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:8px;border:none;background:transparent;color:var(--text2);font-size:18px;display:flex;align-items:center;justify-content:center}
     .modal-close:hover{background:var(--surface2);color:var(--text)}
     .form-group{margin-bottom:14px}
-    .form-label{display:block;font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+    .form-label{display:block;font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0}
     .form-label .opt{color:var(--text3);text-transform:none;font-weight:400;letter-spacing:0}
-    .input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:10px;font-size:14px;font-family:inherit}
+    .input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:8px;font-size:14px;font-family:inherit}
     .input:focus{outline:none;border-color:var(--accent2)}
-    .input.code{font-family:'SF Mono','Monaco',monospace;letter-spacing:.15em;text-align:center;text-transform:uppercase;font-weight:700}
+    .input.code{font-family:'SF Mono','Monaco',monospace;letter-spacing:0;text-align:center;text-transform:uppercase;font-weight:700}
     .form-hint{font-size:11px;color:var(--text3);margin-top:6px}
-    .form-error{background:rgba(244,63,94,.12);color:#fca5a5;border:1px solid rgba(244,63,94,.3);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none}
+    .form-error{background:rgba(244,63,94,.10);color:#be123c;border:1px solid rgba(244,63,94,.26);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none}
     .form-error.show{display:block}
     .modal-actions{display:flex;gap:8px;margin-top:20px}
     .modal-actions .btn{flex:1}
 
-    /* Pin drop modal */
+    /* Add-place modal */
     .city-wrap{position:relative}
-    #city-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-top:4px;max-height:240px;overflow-y:auto;z-index:10;display:none;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+    #city-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:4px;max-height:240px;overflow-y:auto;z-index:10;display:none;box-shadow:0 12px 32px rgba(23,32,42,.16)}
     #city-dropdown.show{display:block}
     .city-opt{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:14px}
     .city-opt:last-child{border-bottom:none}
@@ -200,16 +204,25 @@
     .color-dot{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:transform .15s}
     .color-dot.active{border-color:white}
     .color-dot:hover{transform:scale(1.12)}
-    .privacy-callout{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text2);display:flex;gap:8px;margin-top:14px;line-height:1.5}
+    .place-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .place-type-option{border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:8px;padding:10px;text-align:left;font-size:13px}
+    .place-type-option strong{display:block;font-size:13px;margin-bottom:2px}
+    .place-type-option span{display:block;color:var(--text2);font-size:11px;line-height:1.35}
+    .place-type-option.active{border-color:var(--accent);background:rgba(37,99,235,.08);box-shadow:0 0 0 2px rgba(37,99,235,.08)}
+    .recommendation-list{display:flex;flex-direction:column;gap:8px}
+    .rec-item{display:grid;grid-template-columns:96px 1fr;gap:8px}
+    .rec-item .rec-note{grid-column:1 / -1}
+    @media(max-width:520px){.rec-item{grid-template-columns:1fr}.rec-item .rec-note{grid-column:auto}.place-type-grid{grid-template-columns:1fr}}
+    .privacy-callout{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text2);display:flex;gap:8px;margin-top:14px;line-height:1.5}
     .privacy-callout .lock{font-size:14px;flex-shrink:0}
 
     /* Share modal */
-    .share-code-display{font-family:'SF Mono','Monaco',monospace;font-size:32px;font-weight:800;letter-spacing:.15em;text-align:center;padding:18px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--accent2);margin-bottom:16px}
-    .share-link-display{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:var(--text2);overflow:hidden}
+    .share-code-display{font-family:'SF Mono','Monaco',monospace;font-size:32px;font-weight:800;letter-spacing:0;text-align:center;padding:18px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--accent);margin-bottom:16px}
+    .share-link-display{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:var(--text2);overflow:hidden}
     .share-link-display .url{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
-    .share-message{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;color:var(--text);line-height:1.5;margin-bottom:14px}
+    .share-message{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text);line-height:1.5;margin-bottom:14px}
     .share-channels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
-    .share-ch{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:500;text-decoration:none}
+    .share-ch{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:500;text-decoration:none}
     .share-ch:hover{background:var(--surface3);border-color:var(--border-hover)}
     .share-ch.sms{color:#34d399}
     .share-ch.wa{color:#22c55e}
@@ -217,7 +230,7 @@
     .share-ch.email{color:var(--blue)}
 
     /* Detail card */
-    #detail{position:absolute;top:80px;left:20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;width:280px;display:none;z-index:30;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+    #detail{position:absolute;top:80px;left:20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;width:320px;display:none;z-index:30;box-shadow:0 16px 42px rgba(23,32,42,.18)}
     #detail.show{display:block}
     .detail-close{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:16px}
     .detail-close:hover{background:var(--surface2)}
@@ -227,25 +240,31 @@
     .detail-name{font-size:16px;font-weight:700;color:var(--text)}
     .detail-city{font-size:12px;color:var(--text2);margin-top:2px}
     .detail-note{font-size:13px;color:var(--text);background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:10px}
+    .detail-recs{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+    .detail-rec{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px}
+    .detail-rec-top{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+    .rec-pill{font-size:10px;text-transform:uppercase;letter-spacing:0;color:var(--accent);font-weight:700;background:rgba(37,99,235,.10);border-radius:999px;padding:3px 7px}
+    .detail-rec-name{font-size:13px;font-weight:700;color:var(--text)}
+    .detail-rec-note{font-size:12px;color:var(--text2);line-height:1.4}
     .detail-meta{font-size:11px;color:var(--text3);margin-bottom:10px}
     .detail-remove{width:100%;background:transparent;color:var(--danger);border:1px solid rgba(244,63,94,.3);padding:8px;border-radius:8px;font-size:13px;font-weight:500}
     .detail-remove:hover{background:rgba(244,63,94,.1)}
 
     /* Activity & toast */
     #activity{position:fixed;top:80px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:40;pointer-events:none}
-    .activity-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;min-width:240px;animation:slideIn .35s ease-out;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+    .activity-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;min-width:240px;animation:slideIn .35s ease-out;box-shadow:0 12px 28px rgba(23,32,42,.14)}
     @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
     .activity-item .avatar{width:28px;height:28px;font-size:11px}
     .activity-text{font-size:13px;color:var(--text)}
     .activity-text strong{font-weight:600}
     .activity-time{font-size:11px;color:var(--text3);margin-left:auto}
-    #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;opacity:0;pointer-events:none;transition:transform .25s,opacity .25s;z-index:60;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+    #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:8px;font-size:14px;font-weight:500;opacity:0;pointer-events:none;transition:transform .25s,opacity .25s;z-index:60;box-shadow:0 12px 32px rgba(23,32,42,.16)}
     #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-    /* Post-drop celebration */
-    #post-drop{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:90;backdrop-filter:blur(6px);padding:24px}
+    /* Post-save celebration */
+    #post-drop{position:fixed;inset:0;background:rgba(23,32,42,.38);display:none;align-items:center;justify-content:center;z-index:90;backdrop-filter:blur(6px);padding:24px}
     #post-drop.show{display:flex}
-    .celebrate{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;text-align:center;max-width:400px;width:100%}
+    .celebrate{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:32px;text-align:center;max-width:400px;width:100%;box-shadow:0 18px 50px rgba(23,32,42,.18)}
     .celebrate-emoji{font-size:48px;margin-bottom:8px}
     .celebrate-title{font-size:22px;font-weight:800;color:var(--text);margin-bottom:6px}
     .celebrate-desc{font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.5}
@@ -268,9 +287,9 @@
   <main class="welcome-main">
     <div class="hero">
       <h1>Where are your people?</h1>
-      <p class="lead">Create a private shared map for your friends, classmates, family, or travel crew. Create a map, share a link, and watch everyone drop their pin.</p>
+      <p class="lead">Create a private shared map of where your friends live, where they are from, and the places they know well. Open the map before a trip and find the people and recs you already trust.</p>
       <div class="hero-cta">
-        <button class="btn btn-primary btn-lg" id="hero-create">Create My Friend Map</button>
+        <button class="btn btn-primary btn-lg" id="hero-create">Create My Friend Atlas</button>
         <button class="btn btn-ghost btn-lg" id="hero-join">Join a Map</button>
       </div>
       <div class="privacy-note">🔒 Private by link. City-level only. No exact addresses.</div>
@@ -279,7 +298,7 @@
       <div class="sample-header">
         <div>
           <div class="sample-title">Jesse's Friend Atlas</div>
-          <div class="sample-meta">4 friends · 4 cities · 3 countries</div>
+          <div class="sample-meta">4 friends · 4 cities · 9 recs</div>
         </div>
       </div>
       <div class="sample-map" id="sample-map">
@@ -303,10 +322,10 @@
         <div class="sample-pin" style="background:var(--accent);color:var(--accent);left:43%;top:35%">A</div>
       </div>
       <div class="sample-list">
-        <div class="sample-row"><div class="avatar coral">S</div><div><strong>Sarah</strong> · 🇺🇸 New York</div></div>
-        <div class="sample-row"><div class="avatar blue">M</div><div><strong>Marc</strong> · 🇩🇪 Berlin</div></div>
-        <div class="sample-row"><div class="avatar green">V</div><div><strong>Vince</strong> · 🇺🇸 Miami</div></div>
-        <div class="sample-row"><div class="avatar purple">A</div><div><strong>Anna</strong> · 🇬🇧 London</div></div>
+        <div class="sample-row"><div class="avatar coral">S</div><div><strong>Sarah</strong> · New York · bagels + galleries</div></div>
+        <div class="sample-row"><div class="avatar blue">M</div><div><strong>Marc</strong> · Berlin · bars + neighborhoods</div></div>
+        <div class="sample-row"><div class="avatar green">V</div><div><strong>Vince</strong> · Miami · food + beach days</div></div>
+        <div class="sample-row"><div class="avatar purple">A</div><div><strong>Anna</strong> · London · pubs + markets</div></div>
       </div>
     </div>
   </main>
@@ -320,8 +339,8 @@
       <div class="owner-name">by <strong id="owner-name-display">someone</strong> · <span id="header-code-display">------</span></div>
     </div>
     <div class="atlas-actions">
-      <button class="btn btn-secondary" id="invite-btn">📤 Invite</button>
-      <button class="btn btn-primary" id="add-btn">+ Add Yourself</button>
+      <button class="btn btn-secondary" id="invite-btn">Invite</button>
+      <button class="btn btn-primary" id="add-btn">+ Add Your Places</button>
       <button class="btn btn-icon btn-ghost" id="menu-btn" aria-label="Menu">⋯</button>
     </div>
     <div id="user-menu">
@@ -345,18 +364,20 @@
           </div>
         </div>
         <div class="detail-note" id="detail-note"></div>
+        <div class="detail-recs" id="detail-recs"></div>
         <div class="detail-meta" id="detail-meta"></div>
-        <button class="detail-remove" id="detail-remove">Remove from map</button>
+        <button class="detail-remove" id="detail-remove">Remove this place</button>
       </div>
     </div>
     <aside class="people-panel">
       <div class="stats-row">
-        <div class="stat-card"><div class="stat-num" id="stat-friends">0</div><div class="stat-label">Friends</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-friends">0</div><div class="stat-label">People</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-places">0</div><div class="stat-label">Places</div></div>
         <div class="stat-card"><div class="stat-num" id="stat-cities">0</div><div class="stat-label">Cities</div></div>
-        <div class="stat-card"><div class="stat-num" id="stat-countries">0</div><div class="stat-label">Countries</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-recs">0</div><div class="stat-label">Recs</div></div>
       </div>
       <div class="search-box">
-        <input id="search" placeholder="Search a city or friend" autocomplete="off">
+        <input id="search" placeholder="Search a city, friend, or rec" autocomplete="off">
       </div>
       <div id="people-content"></div>
     </aside>
@@ -368,7 +389,7 @@
   <div class="modal">
     <button class="modal-close" data-close="create-modal">&times;</button>
     <h2>Create your map</h2>
-    <p class="modal-desc">You'll get a shareable link and code. Friends drop their pins; you watch the map fill up.</p>
+    <p class="modal-desc">You'll get a shareable link and code. Friends add the places they know and their best recs.</p>
     <div class="form-error" id="create-error"></div>
     <div class="form-group">
       <label class="form-label">Your Name</label>
@@ -377,7 +398,7 @@
     <div class="form-group">
       <label class="form-label">Map Name <span class="opt">(optional)</span></label>
       <input type="text" class="input" id="create-mapname" placeholder="Jesse's Friend Atlas" maxlength="120">
-      <div class="form-hint">Leave blank for default. Try: "CBS Summer Map", "Europe Trip 2026", "Family Map".</div>
+      <div class="form-hint">Leave blank for default. Try: "Jesse's Friend Atlas", "CBS Travel Map", "Friends Around The World".</div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" data-close="create-modal">Cancel</button>
@@ -406,12 +427,16 @@
 <div class="overlay" id="add-modal">
   <div class="modal">
     <button class="modal-close" data-close="add-modal">&times;</button>
-    <h2>Drop your pin</h2>
-    <p class="modal-desc" id="add-subtitle">Show everyone where you are right now.</p>
+    <h2>Add your places</h2>
+    <p class="modal-desc" id="add-subtitle">Add where you live, where you are from, or somewhere you know well.</p>
     <div class="form-error" id="add-error"></div>
     <div class="form-group">
       <label class="form-label">Your Name</label>
       <input type="text" class="input" id="add-name" placeholder="Enter your name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Place Type</label>
+      <div class="place-type-grid" id="place-type-picker"></div>
     </div>
     <div class="form-group">
       <label class="form-label">City</label>
@@ -422,20 +447,62 @@
       <div class="city-confirmed" id="city-confirmed" style="display:none">✓ <span id="city-confirmed-name"></span></div>
     </div>
     <div class="form-group">
-      <label class="form-label">Note <span class="opt">(optional)</span></label>
-      <input type="text" class="input" id="add-note" placeholder="Here for school, moving in July, here until August..." maxlength="120">
+      <label class="form-label">Context <span class="opt">(optional)</span></label>
+      <input type="text" class="input" id="add-note" placeholder="Grew up here, live here now, studied abroad here..." maxlength="160">
     </div>
     <div class="form-group">
-      <label class="form-label">Pin Color</label>
+      <label class="form-label">Recommendations <span class="opt">(optional)</span></label>
+      <div class="recommendation-list" id="recommendation-list">
+        <div class="rec-item">
+          <select class="input rec-category">
+            <option value="eat">Eat</option>
+            <option value="drink">Drink</option>
+            <option value="coffee">Coffee</option>
+            <option value="do">Do</option>
+            <option value="stay">Stay</option>
+            <option value="tip">Tip</option>
+          </select>
+          <input type="text" class="input rec-name" placeholder="Favorite spot or idea" maxlength="160">
+          <input type="text" class="input rec-note" placeholder="Why / when to go" maxlength="180">
+        </div>
+        <div class="rec-item">
+          <select class="input rec-category">
+            <option value="eat">Eat</option>
+            <option value="drink">Drink</option>
+            <option value="coffee">Coffee</option>
+            <option value="do" selected>Do</option>
+            <option value="stay">Stay</option>
+            <option value="tip">Tip</option>
+          </select>
+          <input type="text" class="input rec-name" placeholder="Another rec" maxlength="160">
+          <input type="text" class="input rec-note" placeholder="Small note" maxlength="180">
+        </div>
+        <div class="rec-item">
+          <select class="input rec-category">
+            <option value="eat">Eat</option>
+            <option value="drink">Drink</option>
+            <option value="coffee">Coffee</option>
+            <option value="do">Do</option>
+            <option value="stay">Stay</option>
+            <option value="tip" selected>Tip</option>
+          </select>
+          <input type="text" class="input rec-name" placeholder="One practical tip" maxlength="160">
+          <input type="text" class="input rec-note" placeholder="Optional detail" maxlength="180">
+        </div>
+      </div>
+      <div class="form-hint">Think restaurants, cafes, walks, bars, museums, neighborhoods, day trips, or practical tips.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Marker Color</label>
       <div class="color-picker" id="color-picker"></div>
     </div>
     <div class="privacy-callout">
       <span class="lock">🔒</span>
-      <span>City-level only. No exact addresses. You can remove your own pin anytime from this same browser.</span>
+      <span>City-level only. Add more than one place if you know multiple cities. You can remove your own places from this same browser.</span>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" data-close="add-modal">Cancel</button>
-      <button class="btn btn-primary" id="add-submit">Drop My Pin</button>
+      <button class="btn btn-primary" id="add-submit">Save Place</button>
     </div>
   </div>
 </div>
@@ -444,23 +511,23 @@
   <div class="modal">
     <button class="modal-close" data-close="share-modal">&times;</button>
     <h2>Invite friends</h2>
-    <p class="modal-desc">Send this to your people so they can drop their pins.</p>
+    <p class="modal-desc">Send this to your people so they can add their places and recommendations.</p>
     <div class="share-code-display" id="share-code-display">------</div>
     <div class="share-link-display"><span class="url" id="share-url-display"></span></div>
     <div class="share-message" id="share-message-text"></div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" id="copy-link-btn">📋 Copy Link</button>
-      <button class="btn btn-primary" id="copy-msg-btn">✉️ Copy Message</button>
+      <button class="btn btn-secondary" id="copy-link-btn">Copy Link</button>
+      <button class="btn btn-primary" id="copy-msg-btn">Copy Message</button>
     </div>
     <div class="share-channels">
-      <a class="share-ch sms" id="share-sms" href="#">💬 iMessage / SMS</a>
-      <a class="share-ch wa" id="share-wa" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
-      <a class="share-ch email" id="share-email" href="#">✉️ Email</a>
-      <a class="share-ch x" id="share-native" href="#">📤 More…</a>
+      <a class="share-ch sms" id="share-sms" href="#">iMessage / SMS</a>
+      <a class="share-ch wa" id="share-wa" href="#" target="_blank" rel="noopener">WhatsApp</a>
+      <a class="share-ch email" id="share-email" href="#">Email</a>
+      <a class="share-ch x" id="share-native" href="#">More...</a>
     </div>
     <div class="privacy-callout" style="margin-top:14px">
       <span class="lock">🔒</span>
-      <span>Anyone with the link can join. They can only see city-level pins. Each friend can remove their own pin anytime.</span>
+      <span>Anyone with the link can join. They can only see city-level places. Each friend can remove their own places anytime.</span>
     </div>
   </div>
 </div>
@@ -501,7 +568,7 @@
 
 <div class="overlay" id="confirm-modal">
   <div class="modal" style="max-width:340px;text-align:center">
-    <p style="font-size:16px;margin-bottom:0">Remove <strong id="confirm-name"></strong> from the map?</p>
+    <p style="font-size:16px;margin-bottom:0">Remove this place from the map?</p>
     <p style="font-size:12px;color:var(--text2);margin-top:8px">This can't be undone.</p>
     <div class="modal-actions" style="margin-top:18px">
       <button class="btn btn-ghost" id="confirm-cancel">Cancel</button>
@@ -510,14 +577,14 @@
   </div>
 </div>
 
-<!-- Post-drop celebration -->
+<!-- Post-save celebration -->
 <div id="post-drop">
   <div class="celebrate">
     <div class="celebrate-emoji">🎉</div>
     <div class="celebrate-title" id="celebrate-title">You're on the map!</div>
     <div class="celebrate-desc" id="celebrate-desc">Now send the link to a few friends.</div>
     <div class="celebrate-actions">
-      <button class="btn btn-primary" id="post-share-btn">📤 Invite Friends</button>
+      <button class="btn btn-primary" id="post-share-btn">Invite Friends</button>
       <button class="btn btn-ghost" id="post-close-btn">Keep exploring</button>
     </div>
   </div>
@@ -556,6 +623,13 @@ function flagFor(country){return FLAGS[country]||'🌍'}
 
 const PIN_COLORS=['#7c3aed','#3b82f6','#06b6d4','#22c55e','#facc15','#f97316','#fb7185','#ec4899'];
 const AVATAR_BG=['#7c3aed','#3b82f6','#06b6d4','#22c55e','#facc15','#f97316','#fb7185','#ec4899','#a78bfa','#60a5fa'];
+const PLACE_TYPES=[
+  {id:'current',title:'Live here',desc:'Where you are now'},
+  {id:'hometown',title:'From here',desc:'Hometown or family base'},
+  {id:'lived',title:'Lived here',desc:'Past home, school, work'},
+  {id:'know',title:'Know well',desc:'A place you can vouch for'},
+];
+const REC_LABELS={eat:'Eat',drink:'Drink',coffee:'Coffee',do:'Do',stay:'Stay',tip:'Tip'};
 function colorForName(name){let h=0;for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))|0;return AVATAR_BG[Math.abs(h)%AVATAR_BG.length]}
 function initialsOf(name){return name.trim().split(/\s+/).map(s=>s[0]||'').join('').slice(0,2).toUpperCase()||'?'}
 
@@ -592,9 +666,9 @@ async function api(path,opts={}){
 }
 
 // ============ STATE ============
-let atlas=null,friends=[],stats={totalFriends:0,cities:0,countries:0};
-let map=null,markers=[],referrer=null,myName=null,myPinId=null;
-let selectedCity=null,selectedColor=PIN_COLORS[0];
+let atlas=null,friends=[],stats={totalFriends:0,totalPlaces:0,cities:0,countries:0,recommendations:0};
+let map=null,markers=[],referrer=null,myName=null,myPinId=null,myPinIds=[];
+let selectedCity=null,selectedColor=PIN_COLORS[0],selectedPinType='current';
 let searchQuery='';
 const $=id=>document.getElementById(id);
 
@@ -604,6 +678,37 @@ function closeOverlay(id){$(id).classList.remove('show')}
 function clearError(id){const e=$(id);if(e){e.classList.remove('show');e.textContent=''}}
 function showError(id,msg){const e=$(id);if(e){e.textContent=msg;e.classList.add('show')}}
 function toast(msg,ms=2400){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),ms)}
+function countRecommendations(list){return list.reduce((sum,f)=>sum+(Array.isArray(f.recommendations)?f.recommendations.length:0),0)}
+function normaliseStats(raw,list){
+  return {
+    totalFriends:raw?.totalFriends??list.length,
+    totalPlaces:raw?.totalPlaces??list.length,
+    cities:raw?.cities??new Set(list.map(f=>f.city)).size,
+    countries:raw?.countries??new Set(list.map(f=>f.country).filter(Boolean)).size,
+    recommendations:raw?.recommendations??countRecommendations(list),
+  };
+}
+function placeTypeLabel(type){return (PLACE_TYPES.find(p=>p.id===type)||PLACE_TYPES[0]).title}
+function recLabel(category){return REC_LABELS[category]||'Tip'}
+function friendMatches(f,q){
+  if(!q)return true;
+  const recs=(f.recommendations||[]).map(r=>`${r.name} ${r.note||''} ${recLabel(r.category)}`).join(' ');
+  return [f.name,f.city,f.country||'',f.note||'',placeTypeLabel(f.pinType),recs].join(' ').toLowerCase().includes(q);
+}
+function getMyPinIds(){
+  try{
+    const ids=JSON.parse(localStorage.getItem(`my-pins-${atlas.code}`)||'[]');
+    return Array.isArray(ids)?ids.map(Number).filter(Boolean):[];
+  }catch{return []}
+}
+function saveMyPinIds(ids){
+  const unique=[...new Set(ids.map(Number).filter(Boolean))];
+  myPinIds=unique;
+  localStorage.setItem(`my-pins-${atlas.code}`,JSON.stringify(unique));
+  if(unique[0])localStorage.setItem(`my-pin-${atlas.code}`,String(unique[0]));
+  else localStorage.removeItem(`my-pin-${atlas.code}`);
+}
+function isMyPlace(f){return myPinIds.includes(f.id)||myPinId===f.id}
 
 // Switch between welcome and atlas mode (changes body theme)
 function switchToWelcome(){
@@ -653,22 +758,25 @@ async function loadAtlas(code){
   const data=await api(`/api/atlas/code/${code}`);
   atlas=data.atlas;
   friends=data.friends;
-  stats=data.stats;
+  stats=normaliseStats(data.stats,friends);
   localStorage.setItem('lastAtlas',atlas.code);
   history.replaceState(null,'',`/join/${atlas.code}`);
   switchToAtlas();
   renderHeader();
   initMap();
   renderPins(true);
+  determineMyPin();
   renderPeoplePanel();
   animateStats();
-  determineMyPin();
 }
 
 function determineMyPin(){
   // Anonymous session cookie identifies "us" — but we don't have access to it
   // from JS (httpOnly). Instead we infer from referrer flow / localStorage.
   myPinId=parseInt(localStorage.getItem(`my-pin-${atlas.code}`)||'0',10)||null;
+  myPinIds=getMyPinIds();
+  if(myPinId&&!myPinIds.includes(myPinId))myPinIds.push(myPinId);
+  saveMyPinIds(myPinIds);
   myName=localStorage.getItem(`my-name-${atlas.code}`)||null;
 }
 
@@ -684,7 +792,7 @@ function renderHeader(){
 function initMap(){
   if(map){map.remove();map=null}
   map=L.map('map',{zoomControl:true,attributionControl:true,minZoom:2,maxZoom:14,worldCopyJump:true}).setView([20,0],2);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',{
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
     attribution:'&copy; OSM &copy; CARTO',subdomains:'abcd',maxZoom:14
   }).addTo(map);
 }
@@ -727,11 +835,12 @@ function fitBoundsToFriends(){
 }
 
 // ============ STATS ANIMATION ============
-let lastStats={totalFriends:0,cities:0,countries:0};
+let lastStats={totalFriends:0,totalPlaces:0,cities:0,countries:0,recommendations:0};
 function animateStats(){
   animateNum('stat-friends',lastStats.totalFriends,stats.totalFriends);
+  animateNum('stat-places',lastStats.totalPlaces,stats.totalPlaces);
   animateNum('stat-cities',lastStats.cities,stats.cities);
-  animateNum('stat-countries',lastStats.countries,stats.countries);
+  animateNum('stat-recs',lastStats.recommendations,stats.recommendations);
   lastStats={...stats};
 }
 function animateNum(id,from,to){
@@ -753,8 +862,8 @@ function renderPeoplePanel(){
     c.innerHTML=renderEmptyChecklist(false);
     return;
   }
-  // If only my own pin and no one else — show "now invite" state
-  const onlyMe=friends.length===1&&myPinId&&friends[0].id===myPinId;
+  // If only my own places and no one else — show "now invite" state
+  const onlyMe=friends.length>0&&friends.every(isMyPlace);
   if(onlyMe){
     c.innerHTML=renderEmptyChecklist(true);
     return;
@@ -763,37 +872,37 @@ function renderPeoplePanel(){
 }
 
 function renderEmptyChecklist(droppedOwn){
-  const havePinned=droppedOwn||(myPinId&&friends.some(f=>f.id===myPinId));
-  const haveOthers=friends.length>(havePinned?1:0);
-  const inviteLine=`<div class="empty-foot">🔒 Private by link. City-level only.<br>Anyone can remove their own pin anytime.</div>`;
+  const havePinned=droppedOwn||friends.some(isMyPlace);
+  const haveOthers=friends.some(f=>!isMyPlace(f));
+  const inviteLine=`<div class="empty-foot">🔒 Private by link. City-level only.<br>Anyone can remove their own places anytime.</div>`;
   if(!havePinned){
     return `
       <div class="empty-checklist">
         <div class="empty-title">Your atlas is ready</div>
         <div class="empty-sub">Now do two things:</div>
-        <div class="check-item"><div class="check-circle"></div><div class="check-text">Add yourself to the map</div></div>
-        <div class="check-item"><div class="check-circle"></div><div class="check-text">Invite 3 friends to drop their pin</div></div>
+        <div class="check-item"><div class="check-circle"></div><div class="check-text">Add the places you know</div></div>
+        <div class="check-item"><div class="check-circle"></div><div class="check-text">Invite 3 friends to add theirs</div></div>
         <div class="check-action">
-          <button class="btn btn-primary btn-full" onclick="openAddModal()">📍 Drop My Pin</button>
+          <button class="btn btn-primary btn-full" onclick="openAddModal()">Add Your Places</button>
         </div>
         <div class="check-action">
-          <button class="btn btn-secondary btn-full" onclick="openShareModal()">📤 Copy Invite Link</button>
+        <button class="btn btn-secondary btn-full" onclick="openShareModal()">Copy Invite Link</button>
         </div>
         ${inviteLine}
       </div>`;
   }
-  // Dropped own, no others yet
+  // Added own, no others yet
   return `
     <div class="empty-checklist">
       <div class="empty-title">Nice. You're on the map.</div>
-      <div class="empty-sub">Now send this to a few friends so they can add themselves.</div>
-      <div class="check-item done"><div class="check-circle"></div><div class="check-text">Add yourself to the map</div></div>
-      <div class="check-item"><div class="check-circle"></div><div class="check-text">Invite 3 friends to drop their pin</div></div>
+      <div class="empty-sub">Now send this to a few friends so they can add their places and recs.</div>
+      <div class="check-item done"><div class="check-circle"></div><div class="check-text">Add your places</div></div>
+      <div class="check-item"><div class="check-circle"></div><div class="check-text">Invite 3 friends to add theirs</div></div>
       <div class="check-action">
-        <button class="btn btn-primary btn-full" onclick="openShareModal()">📤 Copy Invite Link</button>
+        <button class="btn btn-primary btn-full" onclick="openShareModal()">Copy Invite Link</button>
       </div>
       <div class="check-action">
-        <button class="btn btn-secondary btn-full" onclick="shareViaSMS()">💬 Share via Text</button>
+        <button class="btn btn-secondary btn-full" onclick="shareViaSMS()">Share via Text</button>
       </div>
       ${inviteLine}
     </div>`;
@@ -802,7 +911,7 @@ function renderEmptyChecklist(droppedOwn){
 function renderFriendList(){
   // Apply search filter
   const q=searchQuery.trim().toLowerCase();
-  const filtered=q?friends.filter(f=>f.name.toLowerCase().includes(q)||f.city.toLowerCase().includes(q)||(f.country||'').toLowerCase().includes(q)||(f.note||'').toLowerCase().includes(q)):friends;
+  const filtered=q?friends.filter(f=>friendMatches(f,q)):friends;
 
   if(!filtered.length){
     return `<div class="empty-foot" style="margin-top:40px">No matches for "${escHtml(searchQuery)}"</div>`;
@@ -827,16 +936,22 @@ function renderFriendList(){
           <span class="city-name">${escHtml(cityName)}</span>
           <span class="city-count">${g.friends.length}</span>
         </div>
-        ${g.friends.map(f=>`
+        ${g.friends.map(f=>{
+          const recCount=(f.recommendations||[]).length;
+          return `
           <div class="friend-card" data-friend-id="${f.id}" onclick="focusFriend(${f.id})">
             <div class="avatar" style="background:${f.color||colorForName(f.name)}">${escHtml(initialsOf(f.name))}</div>
             <div style="flex:1;min-width:0">
-              <div class="friend-name">${escHtml(f.name)}${myPinId===f.id?' <span style="font-size:10px;color:var(--accent2);font-weight:600">YOU</span>':''}</div>
-              ${f.note?`<div class="friend-meta">${escHtml(f.note)}</div>`:`<div class="friend-meta" style="color:var(--text3)">${timeAgo(f.createdAt)}</div>`}
+              <div class="friend-name">${escHtml(f.name)}${isMyPlace(f)?' <span style="font-size:10px;color:var(--accent2);font-weight:600">YOU</span>':''}</div>
+              <div class="friend-meta">${escHtml(f.note||`${placeTypeLabel(f.pinType)} in ${cityName}`)}</div>
+              <div class="friend-tags">
+                <span class="place-chip">${escHtml(placeTypeLabel(f.pinType))}</span>
+                ${recCount?`<span class="rec-count">${recCount} rec${recCount!==1?'s':''}</span>`:''}
+              </div>
             </div>
             ${f.note?`<div class="friend-time">${timeAgo(f.createdAt)}</div>`:''}
           </div>
-        `).join('')}
+        `}).join('')}
       </div>`;
   }).join('');
 }
@@ -854,11 +969,22 @@ function showDetail(f){
   $('detail-avatar').textContent=initialsOf(f.name);
   $('detail-avatar').style.background=f.color||colorForName(f.name);
   $('detail-name').textContent=f.name;
-  $('detail-city').textContent=`${flagFor(f.country)} ${f.city}`;
+  $('detail-city').textContent=`${flagFor(f.country)} ${f.city} · ${placeTypeLabel(f.pinType)}`;
   if(f.note){$('detail-note').textContent=f.note;$('detail-note').style.display='block'}else{$('detail-note').style.display='none'}
+  const recs=f.recommendations||[];
+  $('detail-recs').innerHTML=recs.map(r=>`
+    <div class="detail-rec">
+      <div class="detail-rec-top">
+        <span class="rec-pill">${escHtml(recLabel(r.category))}</span>
+        <span class="detail-rec-name">${escHtml(r.name)}</span>
+      </div>
+      ${r.note?`<div class="detail-rec-note">${escHtml(r.note)}</div>`:''}
+    </div>
+  `).join('');
+  $('detail-recs').style.display=recs.length?'flex':'none';
   $('detail-meta').textContent=`Joined ${timeAgo(f.createdAt)}`;
   // Only show remove if it's mine
-  $('detail-remove').style.display=(myPinId===f.id)?'block':'none';
+  $('detail-remove').style.display=isMyPlace(f)?'block':'none';
   $('detail-remove').onclick=()=>confirmRemove(f);
   d.classList.add('show');
 }
@@ -872,18 +998,18 @@ function confirmRemove(f){
     try{
       await api(`/api/atlas/${atlas.id}/friend/${f.id}`,{method:'DELETE'});
       hideDetail();
-      localStorage.removeItem(`my-pin-${atlas.code}`);
-      myPinId=null;myName=null;
+      saveMyPinIds(myPinIds.filter(id=>id!==f.id));
+      myPinId=myPinIds[0]||null;
       await refreshAtlas();
-      toast('Pin removed');
-    }catch(e){toast('Couldn’t remove pin')}
+      toast('Place removed');
+    }catch(e){toast('Couldn’t remove place')}
   };
 }
 
 // ============ REFRESH ============
 async function refreshAtlas(){
   const data=await api(`/api/atlas/code/${atlas.code}`);
-  atlas=data.atlas;friends=data.friends;stats=data.stats;
+  atlas=data.atlas;friends=data.friends;stats=normaliseStats(data.stats,friends);
   renderHeader();
   renderPins(false);
   renderPeoplePanel();
@@ -895,14 +1021,29 @@ function openAddModal(){
   $('add-name').value=myName||'';
   $('add-city').value='';
   $('add-note').value='';
+  document.querySelectorAll('#recommendation-list .rec-name,#recommendation-list .rec-note').forEach(input=>input.value='');
   selectedCity=null;
+  selectedPinType='current';
   $('city-confirmed').style.display='none';
   $('city-dropdown').classList.remove('show');
   selectedColor=PIN_COLORS[0];
+  renderPlaceTypePicker();
   renderColorPicker();
   clearError('add-error');
   showOverlay('add-modal');
   setTimeout(()=>$('add-name').focus(),100);
+}
+
+function renderPlaceTypePicker(){
+  $('place-type-picker').innerHTML=PLACE_TYPES.map(p=>`
+    <button type="button" class="place-type-option ${p.id===selectedPinType?'active':''}" data-pin-type="${p.id}">
+      <strong>${escHtml(p.title)}</strong>
+      <span>${escHtml(p.desc)}</span>
+    </button>
+  `).join('');
+  $('place-type-picker').querySelectorAll('.place-type-option').forEach(el=>{
+    el.onclick=()=>{selectedPinType=el.dataset.pinType;renderPlaceTypePicker()};
+  });
 }
 
 function renderColorPicker(){
@@ -954,6 +1095,14 @@ function selectCity(c){
   if(map)map.flyTo([c.lat,c.lng],4,{duration:.6});
 }
 
+function collectRecommendations(){
+  return [...document.querySelectorAll('#recommendation-list .rec-item')].map(row=>({
+    category:row.querySelector('.rec-category').value,
+    name:row.querySelector('.rec-name').value.trim(),
+    note:row.querySelector('.rec-note').value.trim(),
+  })).filter(r=>r.name);
+}
+
 async function submitPin(){
   clearError('add-error');
   const name=$('add-name').value.trim();
@@ -969,6 +1118,8 @@ async function submitPin(){
     note:note||null,
     color:selectedColor,
     referredBy:referrer||null,
+    pinType:selectedPinType,
+    recommendations:collectRecommendations(),
   };
   try{
     const d=await api(`/api/atlas/code/${atlas.code}/join-anon`,{method:'POST',body:JSON.stringify(body)});
@@ -976,26 +1127,26 @@ async function submitPin(){
     if(d.friend){
       myPinId=d.friend.id;
       myName=d.friend.name;
-      localStorage.setItem(`my-pin-${atlas.code}`,String(d.friend.id));
+      saveMyPinIds([...myPinIds,d.friend.id]);
       localStorage.setItem(`my-name-${atlas.code}`,d.friend.name);
     }
     await refreshAtlas();
     if(d.friend){map.flyTo([d.friend.lat,d.friend.lng],5,{duration:.7})}
     showCelebration(d.friend);
     showConfetti();
-    pushActivity({name,city:`${selectedCity.name}, ${selectedCity.country}`,country:selectedCity.country,color:selectedColor});
+    pushActivity({name,city:`${selectedCity.name}, ${selectedCity.country}`,country:selectedCity.country,color:selectedColor,pinType:selectedPinType});
   }catch(e){
-    showError('add-error',e.message||'Failed to drop pin');
+    showError('add-error',e.message||'Failed to save place');
   }
 }
 
 // ============ CELEBRATION + CONFETTI + ACTIVITY ============
 function showCelebration(friend){
   const others=friends.length-1;
-  $('celebrate-title').textContent="You're on the map!";
+  $('celebrate-title').textContent="Saved to the map";
   $('celebrate-desc').textContent=others>0
-    ? `You're on ${atlas.ownerName}'s atlas with ${others} other${others!==1?'s':''}.`
-    : `Now send the link to a few friends.`;
+    ? `Your place is in ${atlas.ownerName}'s atlas with ${others} other place${others!==1?'s':''}.`
+    : `Now send the link to a few friends so their places and recs show up too.`;
   $('post-drop').classList.add('show');
 }
 function hideCelebration(){$('post-drop').classList.remove('show')}
@@ -1022,7 +1173,7 @@ function pushActivity(f){
   const wrap=$('activity');
   const div=document.createElement('div');
   div.className='activity-item';
-  div.innerHTML=`<div class="avatar" style="background:${f.color||colorForName(f.name)}">${escHtml(initialsOf(f.name))}</div><div class="activity-text"><strong>${escHtml(f.name)}</strong> joined in ${escHtml(f.city.split(',')[0])} ${flagFor(f.country)}</div><div class="activity-time">just now</div>`;
+  div.innerHTML=`<div class="avatar" style="background:${f.color||colorForName(f.name)}">${escHtml(initialsOf(f.name))}</div><div class="activity-text"><strong>${escHtml(f.name)}</strong> added ${escHtml(placeTypeLabel(f.pinType).toLowerCase())} in ${escHtml(f.city.split(',')[0])} ${flagFor(f.country)}</div><div class="activity-time">just now</div>`;
   wrap.appendChild(div);
   setTimeout(()=>div.style.opacity='0',5500);
   setTimeout(()=>div.remove(),6000);
@@ -1038,13 +1189,13 @@ function openShareModal(){
   // Native share fallback
   $('share-sms').href=`sms:&body=${encodeURIComponent(message)}`;
   $('share-wa').href=`https://wa.me/?text=${encodeURIComponent(message)}`;
-  $('share-email').href=`mailto:?subject=${encodeURIComponent('Drop your pin on my Friend Atlas')}&body=${encodeURIComponent(message)}`;
+  $('share-email').href=`mailto:?subject=${encodeURIComponent('Add your places to my Friend Atlas')}&body=${encodeURIComponent(message)}`;
   showOverlay('share-modal');
 }
 function buildShareMessage(){
   const name=atlas.mapName||`${atlas.ownerName}'s Friend Atlas`;
   const url=`${location.origin}/join/${atlas.code}?ref=${encodeURIComponent(myName||atlas.ownerName)}`;
-  return `Drop your pin on ${name} so I can see where everyone is: ${url}`;
+  return `Add your places and local recs to ${name} so we can see where everyone lives, where everyone is from, and who to ask before a trip: ${url}`;
 }
 async function copyText(text,successMsg){
   try{await navigator.clipboard.writeText(text);toast(successMsg||'Copied')}
@@ -1183,7 +1334,7 @@ function wireEvents(){
     const q=searchQuery.trim().toLowerCase();
     markers.forEach((m,i)=>{
       const f=friends[i];if(!f)return;
-      const matches=!q||f.name.toLowerCase().includes(q)||f.city.toLowerCase().includes(q)||(f.country||'').toLowerCase().includes(q);
+      const matches=friendMatches(f,q);
       const el=m.getElement();if(!el)return;
       el.style.opacity=matches?'1':'.2';
     });
@@ -1192,6 +1343,7 @@ function wireEvents(){
   // Add modal
   $('add-submit').onclick=submitPin;
   bindCityAutocomplete();
+  renderPlaceTypePicker();
   renderColorPicker();
 
   // Share modal

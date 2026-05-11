@@ -18,6 +18,38 @@ const validate = (req, res, next) => {
   next();
 };
 
+const REC_CATEGORIES = new Set(['eat', 'drink', 'coffee', 'do', 'stay', 'tip']);
+const PIN_TYPES = new Set(['current', 'hometown', 'lived', 'know']);
+
+function sanitizeRecommendations(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((rec) => ({
+      category: REC_CATEGORIES.has(rec.category) ? rec.category : 'tip',
+      name: String(rec.name || '').trim().slice(0, 160),
+      note: String(rec.note || '').trim().slice(0, 500),
+      url: String(rec.url || '').trim().slice(0, 500),
+    }))
+    .filter((rec) => rec.name)
+    .slice(0, 5);
+}
+
+function mapFriend(friend, recommendations = []) {
+  return {
+    id: friend.id, name: friend.name, city: friend.city, country: friend.country,
+    lat: parseFloat(friend.lat), lng: parseFloat(friend.lng), note: friend.note,
+    color: friend.color, profilePicture: friend.profile_picture, createdAt: friend.created_at,
+    pinType: friend.pin_type || 'current', addedByOwner: !!friend.added_by_owner,
+    recommendations: recommendations.map((rec) => ({
+      id: rec.id,
+      category: rec.category,
+      name: rec.name,
+      note: rec.note,
+      url: rec.url,
+    })),
+  };
+}
+
 router.post('/create',
   body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('Name is required'),
   body('mapName').optional({ values: 'falsy' }).isString().trim().isLength({ max: 120 }).withMessage('Map name too long (max 120 chars)'),
@@ -66,15 +98,18 @@ router.get('/code/:code', param('code').isString().isLength({ min: 6, max: 6 }).
     const atlas = await db.getAtlasByCode(req.params.code);
     if (!atlas) return res.status(404).json({ error: 'Atlas not found' });
     const friends = await db.getFriendsByAtlas(atlas.id);
+    const recsByFriend = await Promise.all(friends.map((friend) => db.getRecsForFriend(friend.id)));
     const stats = await db.getAtlasStats(atlas.id);
     res.json({
       atlas: { id: atlas.id, code: atlas.code, ownerName: atlas.owner_name, mapName: atlas.map_name, ownerId: atlas.owner_id, createdAt: atlas.created_at },
-      friends: friends.map(f => ({
-        id: f.id, name: f.name, city: f.city, country: f.country,
-        lat: parseFloat(f.lat), lng: parseFloat(f.lng), note: f.note,
-        color: f.color, profilePicture: f.profile_picture, createdAt: f.created_at,
-      })),
-      stats: { totalFriends: parseInt(stats.total_friends), countries: parseInt(stats.countries), cities: parseInt(stats.cities) },
+      friends: friends.map((f, index) => mapFriend(f, recsByFriend[index] || [])),
+      stats: {
+        totalFriends: parseInt(stats.total_friends),
+        totalPlaces: parseInt(stats.total_places),
+        countries: parseInt(stats.countries),
+        cities: parseInt(stats.cities),
+        recommendations: parseInt(stats.recommendations),
+      },
     });
   } catch (error) {
     console.error('Get atlas error:', error);
@@ -132,7 +167,12 @@ router.get('/:id/export', param('id').isInt(), validate, async (req, res) => {
     const atlas = await db.pool.query('SELECT * FROM atlases WHERE id = $1', [req.params.id]);
     if (!atlas.rows[0]) return res.status(404).json({ error: 'Atlas not found' });
     const friends = await db.getFriendsByAtlas(req.params.id);
-    res.json({ atlas: atlas.rows[0], friends, exportedAt: new Date().toISOString() });
+    const recsByFriend = await Promise.all(friends.map((friend) => db.getRecsForFriend(friend.id)));
+    res.json({
+      atlas: atlas.rows[0],
+      friends: friends.map((friend, index) => mapFriend(friend, recsByFriend[index] || [])),
+      exportedAt: new Date().toISOString(),
+    });
   } catch (error) {
     console.error('Export atlas error:', error);
     res.status(500).json({ error: 'Failed to export atlas' });
@@ -150,10 +190,16 @@ router.post('/code/:code/join-anon',
   body('note').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }).withMessage('Note too long (max 500 chars)'),
   body('color').optional({ values: 'falsy' }).isString().matches(/^#[0-9a-fA-F]{6}$/).withMessage('Invalid color'),
   body('referredBy').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 }).withMessage('Invalid referrer'),
+  body('pinType').optional({ values: 'falsy' }).isString().custom(value => PIN_TYPES.has(value)).withMessage('Invalid place type'),
+  body('recommendations').optional({ values: 'falsy' }).isArray({ max: 5 }).withMessage('Too many recommendations'),
+  body('recommendations.*.category').optional({ values: 'falsy' }).isString().isLength({ max: 30 }).withMessage('Invalid recommendation category'),
+  body('recommendations.*.name').optional({ values: 'falsy' }).isString().trim().isLength({ max: 160 }).withMessage('Recommendation name too long'),
+  body('recommendations.*.note').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }).withMessage('Recommendation note too long'),
+  body('recommendations.*.url').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }).withMessage('Recommendation URL too long'),
   validate,
   async (req, res) => {
     try {
-      const { name, city, country, lat, lng, note, color, referredBy } = req.body;
+      const { name, city, country, lat, lng, note, color, referredBy, pinType } = req.body;
       const atlas = await db.getAtlasByCode(req.params.code);
       if (!atlas) return res.status(404).json({ error: 'Atlas not found' });
 
@@ -163,7 +209,19 @@ router.post('/code/:code/join-anon',
         sessionId = crypto.randomBytes(32).toString('hex');
       }
 
-      const friend = await db.addAnonymousFriend(atlas.id, sessionId, name, city, country || null, lat, lng, note, color || null, referredBy || null);
+      const friend = await db.addAnonymousFriend(atlas.id, sessionId, {
+        name,
+        city,
+        country: country || null,
+        lat,
+        lng,
+        note,
+        color: color || null,
+        referredBy: referredBy || null,
+        pinType: pinType || 'current',
+      });
+      const recommendations = sanitizeRecommendations(req.body.recommendations);
+      const savedRecommendations = await db.replaceRecsForFriend(friend.id, recommendations);
 
       // Set long-lived cookie so anonymous user can edit their pin later
       res.cookie('anon_session', sessionId, {
@@ -175,12 +233,7 @@ router.post('/code/:code/join-anon',
 
       res.json({
         success: true,
-        friend: {
-          id: friend.id, name: friend.name, city: friend.city,
-          country: friend.country, lat: parseFloat(friend.lat),
-          lng: parseFloat(friend.lng), note: friend.note,
-          createdAt: friend.created_at,
-        },
+        friend: mapFriend(friend, savedRecommendations),
       });
     } catch (error) {
       console.error('Anonymous join error:', error);

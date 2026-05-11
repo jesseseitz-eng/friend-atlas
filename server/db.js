@@ -73,6 +73,37 @@ async function initialize() {
         ALTER TABLE atlases ADD COLUMN IF NOT EXISTS map_name VARCHAR(120);
       EXCEPTION WHEN others THEN NULL;
       END $$;
+
+      -- Add pin_type so a single person can have multiple pins (home, current, etc.)
+      DO $$ BEGIN
+        ALTER TABLE friends ADD COLUMN IF NOT EXISTS pin_type VARCHAR(20) DEFAULT 'current';
+      EXCEPTION WHEN others THEN NULL;
+      END $$;
+
+      -- Track owner-added pins (seeded by atlas creator on someone's behalf)
+      DO $$ BEGIN
+        ALTER TABLE friends ADD COLUMN IF NOT EXISTS added_by_owner BOOLEAN DEFAULT false;
+      EXCEPTION WHEN others THEN NULL;
+      END $$;
+
+      -- Drop the old unique constraint that limited 1 pin per (atlas, user) — now multiple pins per person are allowed
+      DO $$ BEGIN
+        ALTER TABLE friends DROP CONSTRAINT IF EXISTS friends_atlas_id_user_id_key;
+      EXCEPTION WHEN others THEN NULL;
+      END $$;
+
+      -- Recommendations table — each pin can have a list of restaurant/bar/activity picks
+      CREATE TABLE IF NOT EXISTS recommendations (
+        id SERIAL PRIMARY KEY,
+        friend_id INTEGER NOT NULL REFERENCES friends(id) ON DELETE CASCADE,
+        category VARCHAR(30) NOT NULL,
+        name VARCHAR(160) NOT NULL,
+        note VARCHAR(500),
+        url VARCHAR(500),
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_recs_friend ON recommendations(friend_id);
     `);
   } finally {
     client.release();
@@ -154,8 +185,15 @@ async function removeFriend(friendId, atlasOwnerId) {
 
 async function getAtlasStats(atlasId) {
   const result = await pool.query(
-    `SELECT COUNT(*) as total_friends, COUNT(DISTINCT country) as countries, COUNT(DISTINCT city) as cities
-     FROM friends WHERE atlas_id = $1`,
+    `SELECT
+       COUNT(DISTINCT COALESCE(f.session_id, LOWER(f.name))) as total_friends,
+       COUNT(DISTINCT f.id) as total_places,
+       COUNT(DISTINCT f.country) as countries,
+       COUNT(DISTINCT f.city) as cities,
+       COUNT(DISTINCT r.id) as recommendations
+     FROM friends f
+     LEFT JOIN recommendations r ON r.friend_id = f.id
+     WHERE f.atlas_id = $1`,
     [atlasId]
   );
   return result.rows[0];
@@ -168,27 +206,97 @@ async function exportAtlas(atlasId, ownerId) {
   return { atlas: atlas.rows[0], friends, exportedAt: new Date().toISOString() };
 }
 
-async function addAnonymousFriend(atlasId, sessionId, name, city, country, lat, lng, note, color, referredBy) {
-  // Check if this session already has a pin on this atlas
-  const existing = await pool.query(
-    'SELECT id FROM friends WHERE atlas_id = $1 AND session_id = $2',
-    [atlasId, sessionId]
-  );
-  if (existing.rows[0]) {
-    // Update existing anonymous pin
+async function addAnonymousFriend(atlasId, sessionId, opts) {
+  const { name, city, country, lat, lng, note, color, referredBy, pinType } = opts;
+  const type = pinType || 'current';
+  // Keep "live here" and "from here" as one editable place per person.
+  // Let "lived here" and "know well" be additive so friends can add many cities.
+  const shouldUpdateExisting = ['current', 'hometown'].includes(type);
+  const existing = shouldUpdateExisting
+    ? await pool.query(
+      'SELECT id FROM friends WHERE atlas_id = $1 AND session_id = $2 AND pin_type = $3',
+      [atlasId, sessionId, type]
+    )
+    : { rows: [] };
+  if (shouldUpdateExisting && existing.rows[0]) {
     const result = await pool.query(
-      `UPDATE friends SET name = $1, city = $2, country = $3, lat = $4, lng = $5, note = $6, color = $7, updated_at = NOW()
-       WHERE atlas_id = $8 AND session_id = $9 RETURNING *`,
-      [name, city, country, lat, lng, note || null, color || null, atlasId, sessionId]
+      `UPDATE friends SET name = $1, city = $2, country = $3, lat = $4, lng = $5,
+         note = $6, color = $7, updated_at = NOW()
+       WHERE atlas_id = $8 AND session_id = $9 AND pin_type = $10 RETURNING *`,
+      [name, city, country, lat, lng, note || null, color || null, atlasId, sessionId, type]
     );
     return result.rows[0];
   }
   const result = await pool.query(
-    `INSERT INTO friends (atlas_id, user_id, session_id, name, city, country, lat, lng, note, color, referred_by)
-     VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-    [atlasId, sessionId, name, city, country, lat, lng, note || null, color || null, referredBy || null]
+    `INSERT INTO friends (atlas_id, user_id, session_id, name, city, country, lat, lng,
+       note, color, referred_by, pin_type)
+     VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+    [atlasId, sessionId, name, city, country, lat, lng, note || null, color || null, referredBy || null, type]
   );
   return result.rows[0];
+}
+
+// Owner-add: atlas owner seeds a pin for someone else (no session_id, marked added_by_owner)
+async function addOwnerPin(atlasId, opts) {
+  const { name, city, country, lat, lng, note, color, pinType } = opts;
+  const type = pinType || 'current';
+  const result = await pool.query(
+    `INSERT INTO friends (atlas_id, user_id, session_id, name, city, country, lat, lng,
+       note, color, pin_type, added_by_owner)
+     VALUES ($1, NULL, NULL, $2, $3, $4, $5, $6, $7, $8, $9, true) RETURNING *`,
+    [atlasId, name, city, country, lat, lng, note || null, color || null, type]
+  );
+  return result.rows[0];
+}
+
+// ---------- Recommendations ----------
+async function getRecsForFriend(friendId) {
+  const r = await pool.query(
+    'SELECT * FROM recommendations WHERE friend_id = $1 ORDER BY category, sort_order, id',
+    [friendId]
+  );
+  return r.rows;
+}
+async function addRec(friendId, opts) {
+  const { category, name, note, url } = opts;
+  const r = await pool.query(
+    `INSERT INTO recommendations (friend_id, category, name, note, url)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [friendId, category, name, note || null, url || null]
+  );
+  return r.rows[0];
+}
+async function replaceRecsForFriend(friendId, recommendations) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM recommendations WHERE friend_id = $1', [friendId]);
+    const rows = [];
+    for (let i = 0; i < recommendations.length; i++) {
+      const { category, name, note, url } = recommendations[i];
+      const r = await client.query(
+        `INSERT INTO recommendations (friend_id, category, name, note, url, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [friendId, category, name, note || null, url || null, i]
+      );
+      rows.push(r.rows[0]);
+    }
+    await client.query('COMMIT');
+    return rows;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+async function deleteRec(recId) {
+  const r = await pool.query('DELETE FROM recommendations WHERE id = $1 RETURNING *', [recId]);
+  return r.rows[0];
+}
+async function getFriendById(friendId) {
+  const r = await pool.query('SELECT * FROM friends WHERE id = $1', [friendId]);
+  return r.rows[0];
 }
 
 async function claimAnonymousFriends(sessionId, userId) {
@@ -224,5 +332,7 @@ module.exports = {
   pool, initialize, findOrCreateUser, createAtlas, getAtlasByCode,
   getAtlasesByOwner, deleteAtlas, addOrUpdateFriend, getFriendsByAtlas,
   removeFriend, getAtlasStats, exportAtlas, addAnonymousFriend,
-  claimAnonymousFriends, removeFriendBySession, getMembershipsByUser,
+  addOwnerPin, claimAnonymousFriends, removeFriendBySession,
+  getMembershipsByUser, getFriendById,
+  getRecsForFriend, addRec, replaceRecsForFriend, deleteRec,
 };
