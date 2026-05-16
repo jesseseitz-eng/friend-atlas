@@ -39,6 +39,7 @@
     .btn.primary{background:var(--green);border-color:var(--green);color:white}
     .btn.blue{background:var(--blue);border-color:var(--blue);color:white}
     .btn:active{transform:scale(.98)}
+    .map.locked .pin:not(.you),.map.locked .map-stats{filter:blur(3px);opacity:.28;pointer-events:none}
     .hero-card{position:absolute;left:24px;top:108px;z-index:4;width:min(520px,calc(100% - 48px));background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:8px;padding:22px;box-shadow:var(--shadow)}
     .eyebrow{font-size:12px;font-weight:900;color:var(--green);text-transform:uppercase;margin-bottom:8px}
     h1{font-size:42px;line-height:1.02;font-weight:900;letter-spacing:0;margin-bottom:12px}
@@ -48,6 +49,9 @@
     .step{border:1px solid var(--line);background:#f7faf8;border-radius:8px;padding:10px}
     .step strong{display:block;font-size:13px}
     .step span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+    .unlock-card{position:absolute;left:24px;bottom:142px;z-index:4;width:min(410px,calc(100% - 48px));background:rgba(21,33,29,.92);color:white;border-radius:8px;padding:14px 15px;box-shadow:var(--shadow)}
+    .unlock-card strong{display:block;font-size:14px;margin-bottom:4px}
+    .unlock-card span{display:block;color:rgba(255,255,255,.76);font-size:13px}
     .pin{position:absolute;z-index:3;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:3px solid white;color:white;font-weight:900;font-size:12px;box-shadow:0 12px 28px rgba(21,33,29,.28);transform:translate(-50%,-50%);transition:transform .15s,box-shadow .15s}
     .pin:hover,.pin.active{transform:translate(-50%,-50%) scale(1.08);box-shadow:0 0 0 7px rgba(37,99,235,.14),0 14px 30px rgba(21,33,29,.3)}
     .pin.sa{left:46%;top:38%;background:var(--coral)}.pin.jm{left:38%;top:33%;background:var(--blue)}.pin.mb{left:56%;top:42%;background:var(--green)}.pin.nk{left:75%;top:47%;background:var(--gold)}.pin.vr{left:28%;top:47%;background:var(--purple)}.pin.you{left:52%;top:55%;background:var(--teal)}
@@ -59,13 +63,18 @@
     .form-head{padding:22px;border-bottom:1px solid var(--line)}
     .form-head h2{font-size:22px;line-height:1.15;font-weight:900;margin-bottom:6px}
     .form-head p{color:var(--muted);font-size:14px}
+    .requirement{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .pill{display:inline-flex;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900;text-transform:uppercase;background:rgba(23,122,92,.12);color:#0f684f}
+    .pill.optional{background:rgba(37,99,235,.10);color:#1d4ed8}
     .privacy-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 22px;border-bottom:1px solid var(--line);background:#f7faf8}
     .privacy{border:1px solid var(--line);background:white;border-radius:8px;padding:10px}
     .privacy strong{display:block;font-size:12px;margin-bottom:3px}
     .privacy span{display:block;color:var(--muted);font-size:12px;line-height:1.35}
     .form-scroll{overflow:auto;padding:18px 22px 24px;display:grid;gap:13px}
     label{display:block;font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+    label .hint{color:var(--soft);font-weight:800}
     .input,.textarea,.select{width:100%;border:1px solid var(--line);background:#f8fbf9;color:var(--ink);border-radius:8px;padding:11px 12px}
+    .input.required{background:#fff;border-color:rgba(23,122,92,.32)}
     .input:focus,.textarea:focus,.select:focus{outline:2px solid rgba(37,99,235,.16);border-color:var(--blue)}
     .textarea{min-height:132px;resize:vertical;line-height:1.45}
     .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -82,6 +91,7 @@
     .save-row{display:flex;gap:9px;position:sticky;bottom:0;background:linear-gradient(180deg,rgba(255,255,255,0),white 18px);padding-top:20px}
     .toast{position:fixed;right:18px;bottom:18px;background:#15211d;color:white;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:800;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);transition:.18s;z-index:10}
     .toast.show{opacity:1;transform:translateY(0)}
+    .save-row .primary:disabled{opacity:.5;cursor:not-allowed}
     @media(max-width:980px){
       .shell{grid-template-columns:1fr}.map{min-height:660px}.panel{min-height:auto;border-left:0;border-top:1px solid var(--line)}.hero-card{top:96px}.map-stats{grid-template-columns:repeat(2,1fr)}.privacy-strip,.two{grid-template-columns:1fr}h1{font-size:34px}.nav{align-items:flex-start}.nav-actions{flex-wrap:wrap;justify-content:flex-end}
     }
@@ -89,7 +99,7 @@
 </head>
 <body>
   <main class="shell">
-    <section class="map" aria-label="Sample CBS J-Term map">
+    <section class="map locked" id="mapPane" aria-label="Sample CBS J-Term map">
       <svg viewBox="0 0 1200 760" aria-hidden="true">
         <rect width="1200" height="760" fill="#e7f0ec"/>
         <g fill="#c7ddd3" stroke="#b7cfc4" stroke-width="2">
@@ -104,24 +114,28 @@
       <nav class="nav">
         <div class="brand">CBS J-Term Atlas <span>powered by Friend Atlas</span></div>
         <div class="nav-actions">
-          <button class="btn" data-focus="notes">Paste recs</button>
-          <button class="btn primary" data-focus="name">Add yourself</button>
+          <button class="btn" data-focus="notes">Paste recs later</button>
+          <button class="btn primary" data-focus="name">Add yourself to see map</button>
         </div>
       </nav>
       <section class="hero-card">
         <div class="eyebrow">Private class map</div>
-        <h1>Where are your people?</h1>
-        <p class="lead">Add your hometown, current city, places you know well, and the notes you would give a J-Term friend before they visit.</p>
+        <h1>Add yourself to see who you know.</h1>
+        <p class="lead">Only your name and one location are required. Recs, contact info, and extra places are optional, and you can add them later.</p>
         <div class="hero-actions">
-          <button class="btn primary" data-focus="name">Start in 60 seconds</button>
+          <button class="btn primary" data-focus="name">Start with name + location</button>
           <button class="btn" data-focus="notes">I have notes to paste</button>
         </div>
         <div class="steps">
-          <div class="step"><strong>1. Add cities</strong><span>Home, current, or know well</span></div>
-          <div class="step"><strong>2. Paste notes</strong><span>Messy recs are welcome</span></div>
-          <div class="step"><strong>3. Choose contact</strong><span>You control what is visible</span></div>
+          <div class="step"><strong>1. Name</strong><span>Required</span></div>
+          <div class="step"><strong>2. One location</strong><span>Required</span></div>
+          <div class="step"><strong>3. Recs/contact</strong><span>Optional, add later</span></div>
         </div>
       </section>
+      <div class="unlock-card" id="unlockCard">
+        <strong>Map preview is blurred until you add yourself.</strong>
+        <span>This keeps the exchange fair: add your name and one place, then see classmates' places and notes.</span>
+      </div>
       <button class="pin sa active" data-person="Sarah A." data-city="Lisbon" data-note="Lived here after college. Ask about dinners, day trips, and where to stay.">SA</button>
       <button class="pin jm" data-person="Jesse M." data-city="Miami / Lisbon" data-note="Cafe and work spot notes, plus first-time Lisbon tips.">JM</button>
       <button class="pin mb" data-person="Marco B." data-city="Porto" data-note="From nearby. Text before booking Sintra or a weekend outside the city.">MB</button>
@@ -137,41 +151,42 @@
     </section>
     <aside class="panel">
       <header class="form-head">
-        <h2>Add yourself to the J-Term Atlas</h2>
-        <p>Your classmates will use this before trips to see who they know in a city and what they recommend.</p>
+        <h2>Start here. Two fields, then you are in.</h2>
+        <p>Add yourself first. You can come back later to add recs, contact info, and more places.</p>
+        <div class="requirement"><span class="pill">Required: name</span><span class="pill">Required: one location</span><span class="pill optional">Everything else optional</span></div>
       </header>
       <section class="privacy-strip">
-        <div class="privacy"><strong>Who sees this?</strong><span>People with the J-Term invite link. Contact info is optional.</span></div>
-        <div class="privacy"><strong>What should I write?</strong><span>Anything you would text a friend: food, neighborhoods, tips, warnings.</span></div>
+        <div class="privacy"><strong>Who sees this?</strong><span>People with the J-Term invite link. Contact info stays hidden unless you opt in.</span></div>
+        <div class="privacy"><strong>Can I add more later?</strong><span>Yes. Start with the basics, then add recs whenever you have a minute.</span></div>
       </section>
-      <form class="form-scroll" id="joinForm">
+      <form class="form-scroll" id="joinForm" autocomplete="off">
         <div class="two">
           <div>
             <label for="name">Name</label>
-            <input class="input" id="name" placeholder="Your name">
+            <input class="input required" id="name" name="jterm-name" autocomplete="off" placeholder="Your name" required>
           </div>
           <div>
-            <label for="contact">Contact preference</label>
-            <input class="input" id="contact" placeholder="WhatsApp, IG, LinkedIn, email">
+            <label for="location">One location</label>
+            <input class="input required" id="location" name="jterm-location" autocomplete="off" placeholder="Hometown, current city, or place you know" required>
           </div>
         </div>
         <div class="two">
           <div>
-            <label for="hometown">Hometown</label>
-            <input class="input" id="hometown" placeholder="Sao Paulo, Brazil">
+            <label for="contact">Contact preference <span class="hint">(optional)</span></label>
+            <input class="input" id="contact" name="jterm-contact" autocomplete="off" placeholder="WhatsApp, IG, LinkedIn, email">
           </div>
           <div>
-            <label for="current">Current city</label>
-            <input class="input" id="current" placeholder="New York, NY">
+            <label for="current">Current city <span class="hint">(optional)</span></label>
+            <input class="input" id="current" name="jterm-current" autocomplete="off" placeholder="New York, NY">
           </div>
         </div>
         <div>
-          <label for="known">Places I know well</label>
-          <input class="input" id="known" placeholder="Lisbon, Madrid, Tokyo">
+          <label for="known">More places I know well <span class="hint">(optional)</span></label>
+          <input class="input" id="known" name="jterm-known" autocomplete="off" placeholder="Lisbon, Madrid, Tokyo">
         </div>
         <div>
-          <label for="notes">Paste recs or notes</label>
-          <textarea class="textarea" id="notes" placeholder="Example: Lisbon - stay near Principe Real or Chiado. Ramiro for seafood, go early. Text me before booking Sintra. Avoid staying too far out if it is your first visit."></textarea>
+          <label for="notes">Paste recs or notes <span class="hint">(optional)</span></label>
+          <textarea class="textarea" id="notes" name="jterm-notes" autocomplete="off" placeholder="Optional example: Lisbon - stay near Principe Real or Chiado. Ramiro for seafood, go early. Text me before booking Sintra."></textarea>
         </div>
         <div class="checks">
           <label class="check"><input type="checkbox" checked> Show my profile on the J-Term map</label>
@@ -179,19 +194,19 @@
           <label class="check"><input type="checkbox" checked> Let people know they can reach out before a trip</label>
         </div>
         <section class="preview">
-          <h3>What classmates see when they click you</h3>
+          <h3>What classmates see after you add yourself</h3>
           <div class="profile">
             <div class="avatar" id="previewInitials">YOU</div>
             <div>
               <strong id="previewName">Your name</strong>
-              <span id="previewCities">Hometown, current city, and places you know</span>
+              <span id="previewCities">Your required location, plus anything optional you add</span>
             </div>
-            <div class="note" id="previewNote">Your pasted notes will show here first. Later, Friend Atlas can group them into Eat, Drink, Stay, Do, Avoid, and Practical Tips.</div>
+            <div class="note" id="previewNote">No recs needed to join. If you paste notes, they show here first. Later, Friend Atlas can group them into Eat, Drink, Stay, Do, Avoid, and Practical Tips.</div>
           </div>
         </section>
         <div class="save-row">
           <button type="button" class="btn blue" id="previewBtn">Preview my pin</button>
-          <button type="submit" class="btn primary">Add me to the atlas</button>
+          <button type="submit" class="btn primary" id="submitBtn" disabled>Add me and show the map</button>
         </div>
       </form>
     </aside>
@@ -200,17 +215,20 @@
   <script>
     const form = document.getElementById('joinForm');
     const nameInput = document.getElementById('name');
+    const locationInput = document.getElementById('location');
     const contactInput = document.getElementById('contact');
-    const hometownInput = document.getElementById('hometown');
     const currentInput = document.getElementById('current');
     const knownInput = document.getElementById('known');
     const notesInput = document.getElementById('notes');
     const previewBtn = document.getElementById('previewBtn');
+    const submitBtn = document.getElementById('submitBtn');
     const previewInitials = document.getElementById('previewInitials');
     const previewName = document.getElementById('previewName');
     const previewCities = document.getElementById('previewCities');
     const previewNote = document.getElementById('previewNote');
     const youPin = document.getElementById('youPin');
+    const mapPane = document.getElementById('mapPane');
+    const unlockCard = document.getElementById('unlockCard');
     const toast = document.getElementById('toast');
     const samplePins = Array.from(document.querySelectorAll('.pin:not(#youPin)'));
 
@@ -221,8 +239,8 @@
 
     function updatePreview(){
       const name = nameInput.value.trim() || 'Your name';
-      const cities = [hometownInput.value, currentInput.value, knownInput.value].map(v => v.trim()).filter(Boolean).join(' | ') || 'Hometown, current city, and places you know';
-      const note = notesInput.value.trim() || 'Your pasted notes will show here first. Later, Friend Atlas can group them into Eat, Drink, Stay, Do, Avoid, and Practical Tips.';
+      const cities = [locationInput.value, currentInput.value, knownInput.value].map(v => v.trim()).filter(Boolean).join(' | ') || 'Your required location, plus anything optional you add';
+      const note = notesInput.value.trim() || 'No recs needed to join. If you paste notes, they show here first. Later, Friend Atlas can group them into Eat, Drink, Stay, Do, Avoid, and Practical Tips.';
       const short = initials(name);
       previewName.textContent = name;
       previewCities.textContent = cities;
@@ -231,6 +249,20 @@
       youPin.textContent = short;
       youPin.classList.add('active');
       samplePins.forEach(pin => pin.classList.remove('active'));
+    }
+
+    function hasRequiredFields(){
+      return nameInput.value.trim().length > 0 && locationInput.value.trim().length > 0;
+    }
+
+    function updateRequiredState(){
+      submitBtn.disabled = !hasRequiredFields();
+      updatePreview();
+    }
+
+    function unlockMap(){
+      mapPane.classList.remove('locked');
+      unlockCard.style.display = 'none';
     }
 
     function showToast(text){
@@ -261,14 +293,31 @@
 
     previewBtn.addEventListener('click', () => {
       updatePreview();
-      showToast('Preview updated.');
+      if (!hasRequiredFields()) {
+        showToast('Add your name and one location first.');
+        (nameInput.value.trim() ? locationInput : nameInput).focus();
+        return;
+      }
+      unlockMap();
+      showToast('Preview updated. The map is unlocked in this demo.');
     });
 
     form.addEventListener('submit', event => {
       event.preventDefault();
       updatePreview();
-      showToast('Demo saved. In the real J-Term link, this would add your pin.');
+      if (!hasRequiredFields()) {
+        showToast('Only name and one location are required.');
+        (nameInput.value.trim() ? locationInput : nameInput).focus();
+        return;
+      }
+      unlockMap();
+      showToast('Demo saved. In the real J-Term link, this would add your pin and show the map.');
     });
+
+    [nameInput, locationInput, currentInput, knownInput, notesInput].forEach(input => {
+      input.addEventListener('input', updateRequiredState);
+    });
+    updateRequiredState();
   </script>
 </body>
 </html>
