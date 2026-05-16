@@ -114,7 +114,7 @@ app.get('/api/me', (req, res) => {
 const indexHtml = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
 
 // Pretty share URL with dynamic OG meta tags
-app.get(['/test1', '/test1/', '/test2', '/test2/', '/test3', '/test3/'], (req, res) => {
+app.get(['/test1', '/test1/', '/test2', '/test2/', '/test3', '/test3/', '/jterm', '/jterm/'], (req, res) => {
   const page = req.path.split('/').filter(Boolean)[0];
   res.sendFile(path.join(__dirname, `../public/${page}.html`));
 });

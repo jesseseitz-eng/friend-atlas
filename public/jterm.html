@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBS J-Term Atlas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#f4f7f5;
+      --surface:#ffffff;
+      --panel:#fbfcfb;
+      --ink:#14201c;
+      --muted:#5d6b66;
+      --soft:#8b9994;
+      --line:rgba(20,32,28,.12);
+      --line-strong:rgba(20,32,28,.2);
+      --green:#177a5c;
+      --blue:#2563eb;
+      --coral:#e85d4f;
+      --gold:#c58b18;
+      --teal:#0891b2;
+      --purple:#7c3aed;
+      --shadow:0 18px 48px rgba(20,32,28,.14);
+    }
+    body{height:100vh;font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);overflow:hidden}
+    button,input,textarea{font:inherit}
+    button{cursor:pointer}
+    .app{height:100vh;display:grid;grid-template-columns:minmax(0,1fr) 430px;background:var(--bg)}
+    .map-side{position:relative;overflow:hidden;background:#e8f0ec}
+    .map-art{position:absolute;inset:0;width:100%;height:100%}
+    .map-art path{transition:fill .15s}
+    .map-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(20,32,28,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(20,32,28,.07) 1px,transparent 1px);background-size:84px 84px;opacity:.38;pointer-events:none}
+    .topbar{position:absolute;left:18px;right:18px;top:18px;display:grid;grid-template-columns:auto minmax(220px,1fr) auto;gap:10px;align-items:center;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:8px;padding:10px;box-shadow:var(--shadow);z-index:5}
+    .brand{font-weight:900;white-space:nowrap}
+    .brand small{display:block;color:var(--muted);font-size:11px;font-weight:700;margin-top:1px}
+    .search{width:100%;border:1px solid var(--line);background:#f6faf8;color:var(--ink);border-radius:8px;padding:11px 12px}
+    .search:focus{outline:2px solid rgba(37,99,235,.16);border-color:var(--blue)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:10px 12px;font-weight:800;white-space:nowrap;text-decoration:none}
+    .btn.primary{background:var(--green);border-color:var(--green);color:white}
+    .btn.blue{background:var(--blue);border-color:var(--blue);color:white}
+    .btn:active{transform:scale(.98)}
+    .layer-dock{position:absolute;left:18px;top:96px;display:flex;gap:8px;flex-wrap:wrap;z-index:4;max-width:min(760px,calc(100% - 36px))}
+    .layer{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:rgba(255,255,255,.9);border-radius:999px;padding:8px 11px;font-size:12px;font-weight:800;color:var(--ink);box-shadow:0 10px 24px rgba(20,32,28,.08)}
+    .layer input{accent-color:var(--green)}
+    .map-summary{position:absolute;left:18px;bottom:18px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:min(540px,calc(100% - 36px));z-index:4}
+    .metric{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:8px;padding:12px;box-shadow:0 12px 32px rgba(20,32,28,.10)}
+    .metric strong{display:block;font-size:24px;font-weight:900;font-variant-numeric:tabular-nums}
+    .metric span{font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:800}
+    .pin{position:absolute;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:white;font-size:12px;font-weight:900;border:3px solid white;box-shadow:0 12px 28px rgba(20,32,28,.28);transform:translate(-50%,-50%);z-index:3;transition:opacity .15s,transform .15s,filter .15s}
+    .pin::after{content:"";position:absolute;inset:-8px;border:1px solid currentColor;border-radius:50%;opacity:.28}
+    .pin.hidden{opacity:.16;filter:grayscale(.9);transform:translate(-50%,-50%) scale(.86)}
+    .pin.active{box-shadow:0 0 0 6px rgba(37,99,235,.16),0 14px 30px rgba(20,32,28,.3)}
+    .sa{left:47%;top:39%;background:var(--coral);color:var(--coral)}.jm{left:38%;top:33%;background:var(--blue);color:var(--blue)}.mb{left:56%;top:41%;background:var(--green);color:var(--green)}.nk{left:75%;top:46%;background:var(--gold);color:var(--gold)}.vr{left:29%;top:46%;background:var(--purple);color:var(--purple)}.al{left:51%;top:64%;background:var(--teal);color:var(--teal)}
+    .pin span{color:white}
+    .side{background:var(--surface);border-left:1px solid var(--line);display:grid;grid-template-rows:auto auto minmax(0,1fr);min-width:0}
+    .hero{padding:20px 20px 16px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#ffffff,#fbfcfb)}
+    .eyebrow{font-size:12px;text-transform:uppercase;color:var(--green);font-weight:900;margin-bottom:8px}
+    h1{font-size:28px;line-height:1.08;font-weight:900;margin-bottom:8px}
+    .lead{font-size:14px;line-height:1.48;color:var(--muted);max-width:36em}
+    .actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+    .privacy{padding:13px 20px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#f7faf8}
+    .privacy-item{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px}
+    .privacy-item strong{display:block;font-size:12px;margin-bottom:3px}
+    .privacy-item span{display:block;color:var(--muted);font-size:12px;line-height:1.35}
+    .scroll{overflow:auto;padding:16px 20px 22px}
+    .section-head{display:flex;align-items:end;justify-content:space-between;margin:0 0 10px}
+    .section-head h2{font-size:15px;font-weight:900}
+    .section-head span{font-size:12px;color:var(--muted);font-weight:700}
+    .person{display:grid;grid-template-columns:40px 1fr;gap:10px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:11px;margin-bottom:8px;transition:opacity .15s,border-color .15s}
+    .person.dim{opacity:.35}
+    .person.active{border-color:var(--blue);box-shadow:0 0 0 2px rgba(37,99,235,.10)}
+    .avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:white;font-weight:900}
+    .person h3{font-size:14px;margin-bottom:2px}
+    .person p{font-size:12px;color:var(--muted);line-height:1.38}
+    .tags{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+    .tag{font-size:10px;font-weight:900;text-transform:uppercase;border-radius:999px;padding:4px 7px;background:rgba(23,122,92,.11);color:#0f684f}
+    .tag.cbs{background:rgba(37,99,235,.10);color:#1d4ed8}.tag.jesse{background:rgba(232,93,79,.11);color:#b63529}
+    .note-box{border:1px solid var(--line-strong);background:#fffdf7;border-radius:8px;padding:13px;margin-top:16px}
+    .note-box h2{font-size:15px;font-weight:900;margin-bottom:8px}
+    .message{width:100%;min-height:158px;resize:vertical;border:1px solid var(--line);background:white;color:var(--ink);border-radius:8px;padding:11px;font-size:13px;line-height:1.45}
+    .message-actions{display:flex;gap:8px;margin-top:9px}
+    .model{margin-top:16px;display:grid;gap:8px}
+    .model-row{border:1px solid var(--line);border-radius:8px;padding:11px;background:var(--panel)}
+    .model-row strong{display:block;font-size:13px;margin-bottom:4px}
+    .model-row span{display:block;color:var(--muted);font-size:12px;line-height:1.4}
+    @media(max-width:980px){
+      body{overflow:auto}.app{height:auto;min-height:100vh;grid-template-columns:1fr}.map-side{height:62vh;min-height:440px}.side{border-left:0;border-top:1px solid var(--line)}.topbar{grid-template-columns:1fr}.brand small{display:inline;margin-left:6px}.privacy{grid-template-columns:1fr}.map-summary{grid-template-columns:repeat(2,1fr)}
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="map-side" aria-label="J-Term world map">
+      <svg class="map-art" viewBox="0 0 1200 760" aria-hidden="true">
+        <rect width="1200" height="760" fill="#e8f0ec"/>
+        <g fill="#c7ddd3" stroke="#b7cfc4" stroke-width="2">
+          <path d="M115 235 C205 126 350 158 368 268 C386 378 236 422 130 352 C63 308 68 278 115 235Z"/>
+          <path d="M395 220 C492 135 630 165 690 268 C740 354 660 454 545 438 C428 422 326 315 395 220Z"/>
+          <path d="M718 182 C886 96 1080 172 1128 315 C1174 454 990 550 824 494 C704 454 628 300 718 182Z"/>
+          <path d="M496 494 C604 447 704 532 676 646 C651 736 514 724 466 628 C432 558 438 522 496 494Z"/>
+          <path d="M848 540 C935 505 1048 552 1084 636 C1028 700 910 706 840 636 C804 596 808 558 848 540Z"/>
+        </g>
+      </svg>
+      <div class="map-grid"></div>
+      <div class="topbar">
+        <div class="brand">CBS J-Term Atlas <small>Friend Atlas circle</small></div>
+        <input id="search" class="search" value="Lisbon" aria-label="Search a city or person">
+        <button class="btn primary">Add yourself</button>
+      </div>
+      <div class="layer-dock" aria-label="Circle filters">
+        <label class="layer"><input type="checkbox" value="jterm" checked> J-Term</label>
+        <label class="layer"><input type="checkbox" value="cbs" checked> CBS</label>
+        <label class="layer"><input type="checkbox" value="jesse" checked> Jesse's friends</label>
+        <label class="layer"><input type="checkbox" value="claimed" checked> Claimed profiles</label>
+      </div>
+      <button class="pin sa active" data-person="sarah" data-circles="jterm,cbs,claimed" style="color:white"><span>SA</span></button>
+      <button class="pin jm" data-person="jesse" data-circles="jterm,cbs,jesse,claimed" style="color:white"><span>JM</span></button>
+      <button class="pin mb" data-person="marco" data-circles="jterm,cbs,claimed" style="color:white"><span>MB</span></button>
+      <button class="pin nk" data-person="niko" data-circles="cbs,claimed" style="color:white"><span>NK</span></button>
+      <button class="pin vr" data-person="val" data-circles="jesse,claimed" style="color:white"><span>VR</span></button>
+      <button class="pin al" data-person="ana" data-circles="jterm,cbs" style="color:white"><span>AL</span></button>
+      <div class="map-summary">
+        <div class="metric"><strong id="peopleCount">68</strong><span>People</span></div>
+        <div class="metric"><strong>41</strong><span>Hometowns</span></div>
+        <div class="metric"><strong>29</strong><span>Current cities</span></div>
+        <div class="metric"><strong>184</strong><span>Friend notes</span></div>
+      </div>
+    </section>
+    <aside class="side">
+      <section class="hero">
+        <div class="eyebrow">Launch circle</div>
+        <h1>Find who you know before you go.</h1>
+        <p class="lead">A private CBS J-Term map for hometowns, current cities, and the recs people would actually text a friend before a trip.</p>
+        <div class="actions">
+          <button class="btn primary">Claim my profile</button>
+          <button class="btn">Invite classmates</button>
+          <button class="btn">Import yearbook draft</button>
+        </div>
+      </section>
+      <section class="privacy">
+        <div class="privacy-item"><strong>Who can see J-Term?</strong><span>Anyone with the J-Term invite link, unless you make it invite-only.</span></div>
+        <div class="privacy-item"><strong>Who can see Jesse's map?</strong><span>Only people you invite to that circle. Same profile, different audience.</span></div>
+      </section>
+      <section class="scroll">
+        <div class="section-head"><h2>Lisbon connections</h2><span>3 people, 17 recs</span></div>
+        <article class="person active" data-person="sarah" data-circles="jterm,cbs,claimed">
+          <div class="avatar" style="background:#e85d4f">SA</div>
+          <div><h3>Sarah A.</h3><p>J-Term. Lived in Lisbon after college. Best for dinners, day trips, and neighborhoods.</p></div>
+          <div class="tags"><span class="tag">J-Term</span><span class="tag cbs">CBS</span><span class="tag">Claimed</span></div>
+        </article>
+        <article class="person" data-person="jesse" data-circles="jterm,cbs,jesse,claimed">
+          <div class="avatar" style="background:#2563eb">JM</div>
+          <div><h3>Jesse M.</h3><p>Cafes, work spots, and first-time Lisbon notes. Also visible in Jesse's friends.</p></div>
+          <div class="tags"><span class="tag">J-Term</span><span class="tag cbs">CBS</span><span class="tag jesse">Jesse</span></div>
+        </article>
+        <article class="person" data-person="marco" data-circles="jterm,cbs,claimed">
+          <div class="avatar" style="background:#177a5c">MB</div>
+          <div><h3>Marco B.</h3><p>From nearby. Text him before booking Sintra or a weekend outside the city.</p></div>
+          <div class="tags"><span class="tag">J-Term</span><span class="tag cbs">CBS</span></div>
+        </article>
+        <div class="note-box">
+          <h2>Message to send</h2>
+          <textarea class="message" readonly>I'm making a private CBS J-Term Friend Atlas so we can see where everyone is from, where people live now, and who to ask before traveling somewhere.
+
+It takes under a minute: add your hometown/current city, places you know well, and any recs or notes you'd give a friend visiting.
+
+You can paste messy notes from your phone. Restaurants, neighborhoods, practical tips, "text me before you book" - all welcome.
+
+Add yourself here: [paste your Friend Atlas invite link]</textarea>
+          <div class="message-actions"><button id="copyBtn" class="btn blue">Copy message</button><a id="waLink" class="btn" href="#" target="_blank" rel="noopener">Open WhatsApp draft</a></div>
+        </div>
+        <div class="model">
+          <div class="section-head"><h2>How circles work</h2><span>One person, many layers</span></div>
+          <div class="model-row"><strong>Profile</strong><span>Sarah has one profile: name, places, contact preference, and notes/recs.</span></div>
+          <div class="model-row"><strong>Circles</strong><span>That profile can appear in J-Term, CBS, and/or Jesse's Friends. Each circle has its own invite link and visibility.</span></div>
+          <div class="model-row"><strong>Layers</strong><span>On the map, filters let you turn circles on and off. Search can show J-Term only, everyone you know, or just claimed profiles.</span></div>
+        </div>
+      </section>
+    </aside>
+  </main>
+  <script>
+    const filters = Array.from(document.querySelectorAll('.layer input'));
+    const pins = Array.from(document.querySelectorAll('.pin'));
+    const people = Array.from(document.querySelectorAll('.person'));
+    const peopleCount = document.getElementById('peopleCount');
+    const search = document.getElementById('search');
+    const copyBtn = document.getElementById('copyBtn');
+    const waLink = document.getElementById('waLink');
+    const message = document.querySelector('.message');
+
+    function activeFilters(){
+      return filters.filter(filter => filter.checked).map(filter => filter.value);
+    }
+
+    function matchesFilter(el){
+      const circles = el.dataset.circles.split(',');
+      return activeFilters().some(filter => circles.includes(filter));
+    }
+
+    function applyFilters(){
+      const term = search.value.trim().toLowerCase();
+      let visiblePeople = 0;
+      pins.forEach(pin => {
+        const visible = matchesFilter(pin) && (!term || pin.dataset.person.includes(term) || term === 'lisbon');
+        pin.classList.toggle('hidden', !visible);
+      });
+      people.forEach(person => {
+        const visible = matchesFilter(person) && (!term || person.innerText.toLowerCase().includes(term) || term === 'lisbon');
+        person.classList.toggle('dim', !visible);
+        if (visible) visiblePeople += 1;
+      });
+      peopleCount.textContent = String(Math.max(visiblePeople * 14 + 26, visiblePeople));
+    }
+
+    function selectPerson(id){
+      pins.forEach(pin => pin.classList.toggle('active', pin.dataset.person === id));
+      people.forEach(person => person.classList.toggle('active', person.dataset.person === id));
+    }
+
+    filters.forEach(filter => filter.addEventListener('change', applyFilters));
+    search.addEventListener('input', applyFilters);
+    pins.forEach(pin => pin.addEventListener('click', () => selectPerson(pin.dataset.person)));
+    people.forEach(person => person.addEventListener('click', () => selectPerson(person.dataset.person)));
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(message.value);
+        copyBtn.textContent = 'Copied';
+        setTimeout(() => copyBtn.textContent = 'Copy message', 1400);
+      } catch (error) {
+        message.select();
+      }
+    });
+    waLink.href = 'https://wa.me/?text=' + encodeURIComponent(message.value);
+    applyFilters();
+  </script>
+</body>
+</html>
