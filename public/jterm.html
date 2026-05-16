@@ -78,6 +78,8 @@
     .input.required{background:#fff;border-color:rgba(23,122,92,.32)}
     .input:focus,.textarea:focus,.select:focus{outline:2px solid rgba(37,99,235,.16);border-color:var(--blue)}
     .textarea{min-height:116px;resize:vertical;line-height:1.45}
+    .textarea.short{min-height:92px}
+    .rec-nudge{font-size:12px;color:var(--muted);margin-top:6px}
     .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .checks{display:grid;gap:8px}
     .check{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);background:#f8fbf9;border-radius:8px;padding:10px;font-size:13px;color:var(--muted)}
@@ -133,7 +135,7 @@
         <div class="value-grid">
           <div class="value"><strong>Find people</strong><span>Who is in Lisbon, Tokyo, CDMX, or nearby?</span></div>
           <div class="value"><strong>Read real notes</strong><span>Neighborhoods, food, warnings, and timing tips.</span></div>
-          <div class="value"><strong>Reach out</strong><span>Contact info only appears when people opt in.</span></div>
+          <div class="value"><strong>Add more later</strong><span>Start with basics, then improve your recs anytime.</span></div>
         </div>
       </section>
       <div class="unlock-card" id="unlockCard">
@@ -157,8 +159,8 @@
       <header class="form-head">
         <div class="eyebrow">Join the private class map</div>
         <h2>Add yourself to see who you know.</h2>
-        <p>Start with your name and one location. Recs, contact info, and extra places are optional and can be added later.</p>
-        <div class="requirement"><span class="pill">Name + one location unlock the map.</span> <span class="pill optional">Recs and contact can wait.</span></div>
+        <p>Start with your name, one place, and a few recs if you have them. Contact info can wait.</p>
+        <div class="requirement"><span class="pill">Name + one place unlock the map.</span> <span class="pill optional">1-3 rec bullets is perfect.</span></div>
       </header>
       <form class="form-scroll" id="joinForm" autocomplete="off">
         <div class="two">
@@ -167,37 +169,38 @@
             <input class="input required" id="name" name="jterm-name" autocomplete="off" placeholder="Your name" required>
           </div>
           <div>
-            <label for="location">One location</label>
-            <input class="input required" id="location" name="jterm-location" autocomplete="off" placeholder="Hometown, current city, or place you know" required>
+            <label for="location">Hometown or place I know</label>
+            <input class="input required" id="location" name="jterm-location" autocomplete="off" placeholder="Lima, Peru or Lisbon" required>
           </div>
+        </div>
+        <div class="two">
+          <div>
+            <label for="current">Current city <span class="hint">(optional)</span></label>
+            <input class="input" id="current" name="jterm-current" autocomplete="off" placeholder="New York, NY">
+          </div>
+          <div>
+            <label for="known">Other places I know <span class="hint">(optional)</span></label>
+            <input class="input" id="known" name="jterm-known" autocomplete="off" placeholder="Madrid, Tokyo, CDMX">
+          </div>
+        </div>
+        <div>
+          <label for="notes">Recs for my hometown / first place <span class="hint">(optional but helpful)</span></label>
+          <textarea class="textarea" id="notes" name="jterm-notes" autocomplete="off" placeholder="Example: Stay near Barranco or Miraflores. Isolina for classic food. Text me before booking a day trip."></textarea>
+          <div class="rec-nudge">Messy notes are good. Restaurants, neighborhoods, what to skip, timing tips.</div>
+        </div>
+        <div>
+          <label for="otherNotes">Recs for other places I know <span class="hint">(optional)</span></label>
+          <textarea class="textarea short" id="otherNotes" name="jterm-other-notes" autocomplete="off" placeholder="Example: Madrid - La Latina for tapas. Tokyo - stay near the Yamanote line first time."></textarea>
         </div>
         <div class="save-row">
           <button type="submit" class="btn primary" id="submitBtn" disabled>Add me and show the map</button>
         </div>
         <details class="optional-details">
-          <summary>Add recs/contact now, or skip for later</summary>
+          <summary>Privacy settings</summary>
           <div class="optional-inner">
-            <div class="two">
-              <div>
-                <label for="contact">Contact preference <span class="hint">(optional)</span></label>
-                <input class="input" id="contact" name="jterm-contact" autocomplete="off" placeholder="WhatsApp, IG, LinkedIn, email">
-              </div>
-              <div>
-                <label for="current">Current city <span class="hint">(optional)</span></label>
-                <input class="input" id="current" name="jterm-current" autocomplete="off" placeholder="New York, NY">
-              </div>
-            </div>
-            <div>
-              <label for="known">More places I know well <span class="hint">(optional)</span></label>
-              <input class="input" id="known" name="jterm-known" autocomplete="off" placeholder="Lisbon, Madrid, Tokyo">
-            </div>
-            <div>
-              <label for="notes">Paste recs or notes <span class="hint">(optional)</span></label>
-              <textarea class="textarea" id="notes" name="jterm-notes" autocomplete="off" placeholder="Optional example: Lisbon - stay near Principe Real or Chiado. Ramiro for seafood, go early. Text me before booking Sintra."></textarea>
-            </div>
             <div class="checks">
               <label class="check"><input type="checkbox" checked> Show my profile on the J-Term map</label>
-              <label class="check"><input type="checkbox"> Show my contact info to classmates</label>
+              <label class="check"><input type="checkbox"> Let classmates request my contact info later</label>
               <label class="check"><input type="checkbox" checked> Let people know they can reach out before a trip</label>
             </div>
             <section class="preview">
@@ -222,10 +225,10 @@
     const form = document.getElementById('joinForm');
     const nameInput = document.getElementById('name');
     const locationInput = document.getElementById('location');
-    const contactInput = document.getElementById('contact');
     const currentInput = document.getElementById('current');
     const knownInput = document.getElementById('known');
     const notesInput = document.getElementById('notes');
+    const otherNotesInput = document.getElementById('otherNotes');
     const previewBtn = document.getElementById('previewBtn');
     const submitBtn = document.getElementById('submitBtn');
     const previewInitials = document.getElementById('previewInitials');
@@ -246,7 +249,8 @@
     function updatePreview(){
       const name = nameInput.value.trim() || 'Your name';
       const cities = [locationInput.value, currentInput.value, knownInput.value].map(v => v.trim()).filter(Boolean).join(' | ') || 'Your required location, plus anything optional you add';
-      const note = notesInput.value.trim() || 'No recs needed to join. If you paste notes, they show here first. Later, Friend Atlas can group them into Eat, Drink, Stay, Do, Avoid, and Practical Tips.';
+      const recNotes = [notesInput.value.trim(), otherNotesInput.value.trim()].filter(Boolean).join('\n\n');
+      const note = recNotes || 'No polished list needed. A few messy recs are enough, and you can always add more later.';
       const short = initials(name);
       previewName.textContent = name;
       previewCities.textContent = cities;
@@ -320,7 +324,7 @@
       showToast('Demo saved. In the real J-Term link, this would add your pin and show the map.');
     });
 
-    [nameInput, locationInput, currentInput, knownInput, notesInput].forEach(input => {
+    [nameInput, locationInput, currentInput, knownInput, notesInput, otherNotesInput].forEach(input => {
       input.addEventListener('input', updateRequiredState);
     });
     updateRequiredState();
