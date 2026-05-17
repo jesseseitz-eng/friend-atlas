@@ -11,6 +11,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('./db');
 const atlasRoutes = require('./routes/atlas');
+const jtermRoutes = require('./routes/jterm');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -87,6 +88,7 @@ app.use(express.static(path.join(__dirname, '../public'), {
   etag: true,
 }));
 
+app.use('/api/jterm', jtermRoutes);
 app.use('/api/atlas', atlasRoutes);
 
 // Simple session-based auth endpoints (no WorkOS needed)
