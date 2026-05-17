@@ -5,10 +5,10 @@ const db = require('../db');
 
 const router = express.Router();
 
-const JTERM_CODE = (process.env.JTERM_ATLAS_CODE || 'CBSJ26').toUpperCase();
+const JTERM_CODE = (process.env.JTERM_ATLAS_CODE || 'CBSJ27').toUpperCase();
 const OWNER_ID = 'jterm_owner';
-const OWNER_NAME = 'CBS J-Term';
-const MAP_NAME = 'CBS J-Term Atlas';
+const OWNER_NAME = 'CBS J-Term 2027';
+const MAP_NAME = 'CBS J-Term 2027 Atlas';
 
 const FALLBACK_GEO = [
   ['miami', 'Miami', 'USA', 25.7617, -80.1918],

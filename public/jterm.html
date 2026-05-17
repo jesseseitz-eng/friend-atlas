@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Join the CBS J-Term Atlas</title>
+  <title>Join the CBS J-Term 2027 Atlas</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -93,6 +93,11 @@
     .note{grid-column:1/-1;margin-top:8px;border-radius:8px;background:white;border:1px solid var(--line);padding:10px;font-size:13px;color:var(--muted);white-space:pre-wrap}
     .save-row{display:flex;gap:9px}
     .save-row .primary{width:100%;padding:13px 14px}
+    .saved-panel{display:none;border:1px solid rgba(23,122,92,.18);background:#eef7f2;border-radius:8px;padding:11px 12px;color:#315d50;gap:7px}
+    .saved-panel.show{display:grid}
+    .saved-panel strong{color:#0f684f;font-size:14px}
+    .saved-panel span{font-size:13px;color:var(--muted)}
+    .saved-panel .btn{justify-self:start;padding:8px 11px;font-size:13px}
     .optional-details{border:1px solid var(--line);border-radius:8px;background:#fbfcfb}
     .optional-details summary{list-style:none;cursor:pointer;padding:12px 13px;font-weight:900;color:var(--ink);display:flex;align-items:center;justify-content:space-between}
     .optional-details summary::-webkit-details-marker{display:none}
@@ -109,7 +114,7 @@
 </head>
 <body>
   <main class="shell">
-    <section class="map locked" id="mapPane" aria-label="Sample CBS J-Term map">
+    <section class="map locked" id="mapPane" aria-label="CBS J-Term map preview">
       <svg viewBox="0 0 1200 760" aria-hidden="true">
         <rect width="1200" height="760" fill="#e7f0ec"/>
         <g fill="#c7ddd3" stroke="#b7cfc4" stroke-width="2">
@@ -122,7 +127,7 @@
       </svg>
       <div class="map-grid"></div>
       <nav class="nav">
-        <div class="brand">CBS J-Term Atlas <span>powered by Friend Atlas</span></div>
+        <div class="brand">CBS J-Term 2027 Atlas <span>powered by Friend Atlas</span></div>
         <div class="nav-actions">
           <button class="btn" data-focus="notes">Paste recs later</button>
           <button class="btn primary" data-focus="name">Add yourself to see map</button>
@@ -176,6 +181,11 @@
         <div class="save-row">
           <button type="submit" class="btn primary" id="submitBtn" disabled>Add me and show the map</button>
         </div>
+        <div class="saved-panel" id="savedPanel" role="status" aria-live="polite">
+          <strong>You're on the J-Term 2027 Atlas.</strong>
+          <span>Your pin and notes were saved. The preview is unlocked, and the full class map is ready.</span>
+          <a class="btn primary" id="fullMapLink" href="/join/CBSJ27">Open full class map</a>
+        </div>
         <div class="two">
           <div>
             <label for="current">Current city <span class="hint">(optional)</span></label>
@@ -220,8 +230,9 @@
       </form>
     </aside>
   </main>
-  <div class="toast" id="toast">Saved. Opening the map...</div>
+  <div class="toast" id="toast">Saved. You're on the J-Term Atlas.</div>
   <script>
+    const JTERM_MAP_URL = '/join/CBSJ27';
     const form = document.getElementById('joinForm');
     const nameInput = document.getElementById('name');
     const locationInput = document.getElementById('location');
@@ -239,7 +250,10 @@
     const mapPane = document.getElementById('mapPane');
     const unlockCard = document.getElementById('unlockCard');
     const toast = document.getElementById('toast');
+    const savedPanel = document.getElementById('savedPanel');
+    const fullMapLink = document.getElementById('fullMapLink');
     const samplePins = Array.from(document.querySelectorAll('.pin:not(#youPin)'));
+    let savedSuccessfully = false;
 
     function initials(name){
       const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
@@ -266,7 +280,7 @@
     }
 
     function updateRequiredState(){
-      submitBtn.disabled = !hasRequiredFields();
+      submitBtn.disabled = savedSuccessfully || !hasRequiredFields();
       updatePreview();
     }
 
@@ -322,7 +336,7 @@
         return;
       }
       unlockMap();
-      showToast('Preview updated. The map is unlocked in this demo.');
+      showToast('Preview updated.');
     });
 
     form.addEventListener('submit', event => {
@@ -352,10 +366,12 @@
           localStorage.setItem(`my-pins-${data.atlas.code}`, JSON.stringify(ids));
           if (ids[0]) localStorage.setItem(`my-pin-${data.atlas.code}`, String(ids[0]));
         }
-        showToast('Saved. Opening the map...');
-        setTimeout(() => {
-          window.location.href = data.redirectUrl || '/join/CBSJ26';
-        }, 450);
+        savedSuccessfully = true;
+        fullMapLink.href = data.redirectUrl || JTERM_MAP_URL;
+        savedPanel.classList.add('show');
+        submitBtn.textContent = 'Saved';
+        submitBtn.disabled = true;
+        showToast("Saved. You're on the J-Term Atlas.");
       }).catch((error) => {
         submitBtn.disabled = false;
         submitBtn.textContent = oldText;

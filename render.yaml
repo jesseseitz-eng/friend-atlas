@@ -2,7 +2,6 @@ services:
   - type: web
     name: friend-atlas
     env: docker
-    plan: free
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -17,4 +16,3 @@ services:
         sync: false
 databases:
   - name: friend-atlas-db
-    plan: free
