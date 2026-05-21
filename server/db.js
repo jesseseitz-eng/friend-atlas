@@ -104,6 +104,19 @@ async function initialize() {
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_recs_friend ON recommendations(friend_id);
+
+      CREATE TABLE IF NOT EXISTS jterm_private_recs (
+        id SERIAL PRIMARY KEY,
+        atlas_id INTEGER NOT NULL REFERENCES atlases(id) ON DELETE CASCADE,
+        friend_id INTEGER REFERENCES friends(id) ON DELETE CASCADE,
+        session_id VARCHAR(64),
+        name VARCHAR(100) NOT NULL,
+        place VARCHAR(255) NOT NULL,
+        notes TEXT NOT NULL,
+        other_notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_jterm_private_recs_atlas ON jterm_private_recs(atlas_id);
     `);
   } finally {
     client.release();
@@ -294,6 +307,16 @@ async function deleteRec(recId) {
   const r = await pool.query('DELETE FROM recommendations WHERE id = $1 RETURNING *', [recId]);
   return r.rows[0];
 }
+
+async function addJtermPrivateRec({ atlasId, friendId, sessionId, name, place, notes, otherNotes }) {
+  const result = await pool.query(
+    `INSERT INTO jterm_private_recs (atlas_id, friend_id, session_id, name, place, notes, other_notes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [atlasId, friendId || null, sessionId || null, name, place, notes, otherNotes || null]
+  );
+  return result.rows[0];
+}
+
 async function getFriendById(friendId) {
   const r = await pool.query('SELECT * FROM friends WHERE id = $1', [friendId]);
   return r.rows[0];
@@ -334,5 +357,5 @@ module.exports = {
   removeFriend, getAtlasStats, exportAtlas, addAnonymousFriend,
   addOwnerPin, claimAnonymousFriends, removeFriendBySession,
   getMembershipsByUser, getFriendById,
-  getRecsForFriend, addRec, replaceRecsForFriend, deleteRec,
+  getRecsForFriend, addRec, replaceRecsForFriend, deleteRec, addJtermPrivateRec,
 };

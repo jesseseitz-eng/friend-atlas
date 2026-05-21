@@ -8,113 +8,112 @@
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
-      --bg:#f5f8f6;
-      --surface:#ffffff;
-      --panel:#fbfcfb;
-      --ink:#15211d;
-      --muted:#5c6964;
-      --soft:#8d9994;
-      --line:rgba(21,33,29,.12);
-      --line-strong:rgba(21,33,29,.2);
-      --green:#177a5c;
-      --blue:#2563eb;
-      --coral:#e85d4f;
-      --gold:#c58b18;
-      --purple:#7c3aed;
-      --teal:#0891b2;
+      --bg:#f5f8f6;--surface:#fff;--ink:#15211d;--muted:#5c6964;--soft:#8d9994;
+      --line:rgba(21,33,29,.12);--line-strong:rgba(21,33,29,.2);
+      --green:#177a5c;--blue:#2563eb;--coral:#e85d4f;--gold:#c58b18;--purple:#7c3aed;--teal:#0891b2;
       --shadow:0 18px 44px rgba(21,33,29,.14);
     }
-    html,body{min-height:100%;font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
-    button,input,textarea,select{font:inherit}
+    html,body{min-height:100%;font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.4}
+    button,input,textarea{font:inherit}
     button{cursor:pointer}
     .shell{min-height:100vh;display:grid;grid-template-columns:minmax(390px,440px) minmax(0,1fr)}
+    .panel{order:-1;background:var(--surface);border-right:1px solid var(--line);min-height:100vh;display:flex;flex-direction:column;box-shadow:8px 0 28px rgba(21,33,29,.08);z-index:2}
+    .form-head{padding:18px 22px 12px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fbfcfb)}
+    .eyebrow{font-size:12px;font-weight:900;color:var(--green);text-transform:uppercase;margin-bottom:6px}
+    .form-head h1{font-size:28px;line-height:1.04;font-weight:900;letter-spacing:0;margin-bottom:8px}
+    .form-head p{color:var(--muted);font-size:14px}
+    .requirement{margin-top:10px;border-radius:8px;background:#f3f8f5;border:1px solid rgba(23,122,92,.16);padding:9px 10px;color:#315d50;font-size:13px}
+    .pill{font-weight:900;color:#0f684f}
+    .form-scroll{overflow:auto;padding:14px 18px 22px;display:grid;gap:10px}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    label{display:block;font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+    label .hint{color:var(--soft);font-weight:800}
+    .input,.textarea{width:100%;border:1px solid var(--line);background:#f8fbf9;color:var(--ink);border-radius:8px;padding:10px 11px}
+    .input.required,.textarea.required{background:#fff;border-color:rgba(23,122,92,.34)}
+    .input:focus,.textarea:focus{outline:2px solid rgba(37,99,235,.16);border-color:var(--blue)}
+    .textarea{min-height:74px;resize:vertical;line-height:1.42}
+    .textarea.short{min-height:72px}
+    .rec-nudge{font-size:12px;color:var(--muted);margin-top:5px}
+    .scope-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .scope{position:relative;border:1px solid var(--line);background:#f8fbf9;border-radius:8px;padding:10px 10px 10px 34px;color:var(--muted);font-size:12px;min-height:76px}
+    .scope input{position:absolute;left:11px;top:13px;accent-color:var(--green)}
+    .scope strong{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
+    .scope:has(input:checked){border-color:rgba(23,122,92,.38);background:#eef7f2}
+    .save-row{display:flex;gap:9px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:10px 13px;font-weight:800;text-decoration:none;white-space:nowrap}
+    .btn.primary{background:var(--green);border-color:var(--green);color:white}
+    .btn.blue{background:var(--blue);border-color:var(--blue);color:white}
+    .btn:active{transform:scale(.98)}
+    .save-row .primary{width:100%;padding:12px 14px;font-size:15px}
+    .save-row .primary:disabled{opacity:.55;cursor:not-allowed}
+    .saved-panel{display:none;border:1px solid rgba(23,122,92,.18);background:#eef7f2;border-radius:8px;padding:10px 11px;color:#315d50;gap:4px}
+    .saved-panel.show{display:grid}
+    .saved-panel strong{color:#0f684f;font-size:14px}
+    .saved-panel span{font-size:13px;color:var(--muted)}
+    .optional-details{border:1px solid var(--line);border-radius:8px;background:#fbfcfb}
+    .optional-details summary{list-style:none;cursor:pointer;padding:11px 12px;font-weight:900;color:var(--ink);display:flex;align-items:center;justify-content:space-between}
+    .optional-details summary::-webkit-details-marker{display:none}
+    .optional-details summary::after{content:"+";font-size:20px;line-height:1;color:var(--green)}
+    .optional-details[open] summary::after{content:"-"}
+    .optional-inner{border-top:1px solid var(--line);padding:12px;display:grid;gap:10px}
+    .checks{display:grid;gap:8px}
+    .check{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);background:#f8fbf9;border-radius:8px;padding:10px;font-size:13px;color:var(--muted);text-transform:none;font-weight:700}
+    .check input{margin-top:2px;accent-color:var(--green)}
+
     .map{position:relative;min-height:100vh;overflow:hidden;background:#e7f0ec}
     .map svg{position:absolute;inset:0;width:100%;height:100%}
     .map-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(21,33,29,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(21,33,29,.07) 1px,transparent 1px);background-size:86px 86px;opacity:.38}
     .nav{position:absolute;top:18px;left:18px;z-index:5;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:8px;padding:12px 14px;box-shadow:0 12px 30px rgba(21,33,29,.10)}
     .brand{font-weight:900}
     .brand span{display:block;color:var(--muted);font-size:11px;font-weight:800;margin-top:1px;text-transform:uppercase}
-    .nav-actions{display:none}
-    .btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:10px 13px;font-weight:800;text-decoration:none;white-space:nowrap}
-    .btn.primary{background:var(--green);border-color:var(--green);color:white}
-    .btn.blue{background:var(--blue);border-color:var(--blue);color:white}
-    .btn:active{transform:scale(.98)}
-    .map.locked .pin:not(.you),.map.locked .map-stats{filter:blur(3px);opacity:.28;pointer-events:none}
+    .map-tools{position:absolute;top:18px;right:18px;z-index:6;display:flex;gap:8px;width:min(390px,calc(100% - 300px))}
+    .map.locked .map-tools{display:none}
+    .map-tools input{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.94);border-radius:8px;padding:11px 12px;box-shadow:0 12px 30px rgba(21,33,29,.08)}
+    .map-tools input:focus{outline:2px solid rgba(37,99,235,.16);border-color:var(--blue)}
     .hero-card{position:absolute;left:24px;top:96px;z-index:4;width:min(390px,calc(100% - 48px));background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:8px;padding:18px;box-shadow:0 16px 36px rgba(21,33,29,.12)}
-    .eyebrow{font-size:12px;font-weight:900;color:var(--green);text-transform:uppercase;margin-bottom:8px}
-    h1{font-size:28px;line-height:1.08;font-weight:900;letter-spacing:0;margin-bottom:10px}
+    .map:not(.locked) .hero-card{opacity:.92}
+    .hero-card h2{font-size:30px;line-height:1.08;font-weight:900;letter-spacing:0;margin-bottom:10px}
     .lead{color:var(--muted);font-size:14px;max-width:34em}
-    .hero-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
-    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}
-    .step{border:1px solid var(--line);background:#f7faf8;border-radius:8px;padding:10px}
-    .step strong{display:block;font-size:13px}
-    .step span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
-    .unlock-card{position:absolute;left:24px;bottom:112px;z-index:4;width:min(340px,calc(100% - 48px));background:rgba(21,33,29,.9);color:white;border-radius:8px;padding:11px 12px;box-shadow:0 16px 36px rgba(21,33,29,.18)}
-    .unlock-card strong{display:block;font-size:13px;margin-bottom:2px}
-    .unlock-card span{display:block;color:rgba(255,255,255,.76);font-size:12px}
-    .pin{position:absolute;z-index:3;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:3px solid white;color:white;font-weight:900;font-size:12px;box-shadow:0 12px 28px rgba(21,33,29,.28);transform:translate(-50%,-50%);transition:transform .15s,box-shadow .15s}
-    .pin:hover,.pin.active{transform:translate(-50%,-50%) scale(1.08);box-shadow:0 0 0 7px rgba(37,99,235,.14),0 14px 30px rgba(21,33,29,.3)}
-    .pin.sa{left:46%;top:38%;background:var(--coral)}.pin.jm{left:38%;top:33%;background:var(--blue)}.pin.mb{left:56%;top:42%;background:var(--green)}.pin.nk{left:75%;top:47%;background:var(--gold)}.pin.vr{left:28%;top:47%;background:var(--purple)}.pin.you{left:52%;top:55%;background:var(--teal)}
-    .map-stats{position:absolute;left:24px;right:24px;bottom:22px;z-index:4;display:grid;grid-template-columns:repeat(4,minmax(0,110px));gap:8px;max-width:470px}
-    .metric{background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:8px;padding:9px 10px;box-shadow:0 10px 24px rgba(21,33,29,.08)}
-    .metric strong{display:block;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums}
-    .metric span{display:block;font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:900}
     .value-grid{display:grid;gap:7px;margin-top:14px}
     .value{display:grid;grid-template-columns:82px 1fr;gap:9px;border-top:1px solid var(--line);padding-top:7px}
     .value strong{font-size:12px}
     .value span{color:var(--muted);font-size:12px}
-    .panel{order:-1;background:var(--surface);border-right:1px solid var(--line);min-height:100vh;display:flex;flex-direction:column;box-shadow:8px 0 28px rgba(21,33,29,.08);z-index:2}
-    .form-head{padding:26px 24px 16px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fbfcfb)}
-    .form-head h2{font-size:29px;line-height:1.05;font-weight:900;margin-bottom:8px}
-    .form-head p{color:var(--muted);font-size:15px}
-    .requirement{margin-top:12px;border-radius:8px;background:#f3f8f5;border:1px solid rgba(23,122,92,.14);padding:10px 11px;color:#315d50;font-size:13px}
-    .pill{font-weight:900;color:#0f684f}
-    .pill.optional{color:var(--muted);font-weight:700}
-    .privacy-strip{display:none}
-    .form-scroll{overflow:auto;padding:18px 22px 24px;display:grid;gap:13px}
-    label{display:block;font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
-    label .hint{color:var(--soft);font-weight:800}
-    .input,.textarea,.select{width:100%;border:1px solid var(--line);background:#f8fbf9;color:var(--ink);border-radius:8px;padding:11px 12px}
-    .input.required{background:#fff;border-color:rgba(23,122,92,.32)}
-    .input:focus,.textarea:focus,.select:focus{outline:2px solid rgba(37,99,235,.16);border-color:var(--blue)}
-    .textarea{min-height:116px;resize:vertical;line-height:1.45}
-    .textarea.short{min-height:92px}
-    .rec-nudge{font-size:12px;color:var(--muted);margin-top:6px}
-    .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .checks{display:grid;gap:8px}
-    .check{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);background:#f8fbf9;border-radius:8px;padding:10px;font-size:13px;color:var(--muted)}
-    .check input{margin-top:2px;accent-color:var(--green)}
-    .preview{border:1px solid var(--line-strong);background:#fffdf7;border-radius:8px;padding:13px;margin-top:4px}
-    .preview h3{font-size:15px;font-weight:900;margin-bottom:8px}
-    .profile{display:grid;grid-template-columns:42px 1fr;gap:10px}
-    .avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--teal);color:white;font-weight:900}
-    .profile strong{display:block;font-size:14px}
-    .profile span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
-    .note{grid-column:1/-1;margin-top:8px;border-radius:8px;background:white;border:1px solid var(--line);padding:10px;font-size:13px;color:var(--muted);white-space:pre-wrap}
-    .save-row{display:flex;gap:9px}
-    .save-row .primary{width:100%;padding:13px 14px}
-    .saved-panel{display:none;border:1px solid rgba(23,122,92,.18);background:#eef7f2;border-radius:8px;padding:11px 12px;color:#315d50;gap:7px}
-    .saved-panel.show{display:grid}
-    .saved-panel strong{color:#0f684f;font-size:14px}
-    .saved-panel span{font-size:13px;color:var(--muted)}
-    .saved-panel .btn{justify-self:start;padding:8px 11px;font-size:13px}
-    .optional-details{border:1px solid var(--line);border-radius:8px;background:#fbfcfb}
-    .optional-details summary{list-style:none;cursor:pointer;padding:12px 13px;font-weight:900;color:var(--ink);display:flex;align-items:center;justify-content:space-between}
-    .optional-details summary::-webkit-details-marker{display:none}
-    .optional-details summary::after{content:"+";font-size:20px;line-height:1;color:var(--green)}
-    .optional-details[open] summary::after{content:"-"}
-    .optional-inner{border-top:1px solid var(--line);padding:13px;display:grid;gap:13px}
+    .unlock-card{position:absolute;left:24px;bottom:112px;z-index:4;width:min(350px,calc(100% - 48px));background:rgba(21,33,29,.91);color:white;border-radius:8px;padding:11px 12px;box-shadow:0 16px 36px rgba(21,33,29,.18)}
+    .unlock-card strong{display:block;font-size:13px;margin-bottom:2px}
+    .unlock-card span{display:block;color:rgba(255,255,255,.76);font-size:12px}
+    .pin{position:absolute;z-index:3;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:3px solid white;color:white;font-weight:900;font-size:12px;box-shadow:0 12px 28px rgba(21,33,29,.28);transform:translate(-50%,-50%);transition:transform .15s,box-shadow .15s}
+    .pin:hover,.pin.active{transform:translate(-50%,-50%) scale(1.08);box-shadow:0 0 0 7px rgba(37,99,235,.14),0 14px 30px rgba(21,33,29,.3)}
+    .pin.ghost.sa{left:46%;top:38%;background:var(--coral)}.pin.ghost.jm{left:38%;top:33%;background:var(--blue)}.pin.ghost.mb{left:56%;top:42%;background:var(--green)}.pin.ghost.nk{left:75%;top:47%;background:var(--gold)}.pin.ghost.vr{left:28%;top:47%;background:var(--purple)}
+    .map:not(.locked) .pin.ghost{display:none}
+    .map.locked .pin:not(.you),.map.locked .map-stats{filter:blur(3px);opacity:.28;pointer-events:none}
+    .pin.dynamic{background:var(--teal)}
+    .pin.mine{background:var(--teal);box-shadow:0 0 0 9px rgba(8,145,178,.18),0 12px 28px rgba(21,33,29,.3)}
+    .map-stats{position:absolute;left:24px;right:24px;bottom:22px;z-index:4;display:grid;grid-template-columns:repeat(4,minmax(0,110px));gap:8px;max-width:470px}
+    .metric{background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:8px;padding:9px 10px;box-shadow:0 10px 24px rgba(21,33,29,.08)}
+    .metric strong{display:block;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums}
+    .metric span{display:block;font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:900}
+    .person-card{position:absolute;right:18px;top:82px;z-index:7;width:min(360px,calc(100% - 36px));display:none;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:0 16px 36px rgba(21,33,29,.14)}
+    .person-card.show{display:block}
+    .person-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .person-card h3{font-size:18px;line-height:1.15;margin-bottom:4px}
+    .person-meta{font-size:13px;color:var(--muted)}
+    .person-note{margin-top:11px;border-top:1px solid var(--line);padding-top:10px;color:var(--muted);font-size:13px;white-space:pre-wrap}
+    .rec-list{display:grid;gap:7px;margin-top:10px}
+    .rec{border:1px solid var(--line);border-radius:8px;background:#f8fbf9;padding:8px}
+    .rec strong{display:block;font-size:13px}
+    .rec span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+    .chip{display:inline-flex;border-radius:999px;background:#eef7f2;color:#0f684f;font-size:10px;font-weight:900;text-transform:uppercase;padding:3px 7px;margin-top:7px}
+    .close-detail{border:0;background:transparent;font-size:20px;line-height:1;color:var(--muted);padding:0 4px}
     .toast{position:fixed;right:18px;bottom:18px;background:#15211d;color:white;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:800;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);transition:.18s;z-index:10}
     .toast.show{opacity:1;transform:translateY(0)}
-    .save-row .primary:disabled{opacity:.5;cursor:not-allowed}
     @media(max-width:980px){
-      .shell{grid-template-columns:1fr}.map{min-height:620px}.panel{order:-1;min-height:auto;border-right:0;border-top:1px solid var(--line);box-shadow:none}.hero-card{top:88px}.map-stats{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}h1{font-size:28px}.nav{right:18px}.value{grid-template-columns:1fr}.form-head h2{font-size:26px}
+      .shell{grid-template-columns:1fr}.panel{order:-1;min-height:auto;border-right:0;border-top:1px solid var(--line);box-shadow:none}.map{min-height:620px}.two,.scope-grid{grid-template-columns:1fr}.hero-card{top:96px}.map-stats{grid-template-columns:repeat(2,1fr)}.map-tools{top:82px;left:18px;right:18px;width:auto}.person-card{top:136px}.value{grid-template-columns:1fr}.form-head h1{font-size:25px}
     }
   </style>
 </head>
 <body>
   <main class="shell">
-    <section class="map locked" id="mapPane" aria-label="CBS J-Term map preview">
+    <section class="map locked" id="mapPane" aria-label="CBS J-Term 2027 map">
       <svg viewBox="0 0 1200 760" aria-hidden="true">
         <rect width="1200" height="760" fill="#e7f0ec"/>
         <g fill="#c7ddd3" stroke="#b7cfc4" stroke-width="2">
@@ -126,46 +125,52 @@
         </g>
       </svg>
       <div class="map-grid"></div>
-      <nav class="nav">
-        <div class="brand">CBS J-Term 2027 Atlas <span>powered by Friend Atlas</span></div>
-        <div class="nav-actions">
-          <button class="btn" data-focus="notes">Paste recs later</button>
-          <button class="btn primary" data-focus="name">Add yourself to see map</button>
-        </div>
-      </nav>
+      <nav class="nav"><div class="brand">CBS J-Term 2027 Atlas <span>powered by Friend Atlas</span></div></nav>
+      <div class="map-tools">
+        <input id="mapSearch" autocomplete="off" placeholder="Search a city, classmate, or rec">
+        <button class="btn" type="button" id="resetMapBtn">Reset</button>
+      </div>
       <section class="hero-card">
         <div class="eyebrow">Why join?</div>
-        <h1>Before a trip, know who to ask.</h1>
+        <h2>Before a trip, know who to ask.</h2>
         <p class="lead">Search a city to see classmates who are from there, live there, or know it well, plus the notes they would actually text a friend.</p>
         <div class="value-grid">
           <div class="value"><strong>Find people</strong><span>Who is in Lisbon, Tokyo, CDMX, or nearby?</span></div>
           <div class="value"><strong>Read real notes</strong><span>Neighborhoods, food, warnings, and timing tips.</span></div>
-          <div class="value"><strong>Add more later</strong><span>Start with basics, then improve your recs anytime.</span></div>
+          <div class="value"><strong>Add more later</strong><span>Start with one rec, then improve your places anytime.</span></div>
         </div>
       </section>
       <div class="unlock-card" id="unlockCard">
-        <strong>Map preview is blurred until you add yourself.</strong>
-        <span>This keeps the exchange fair: add your name and one place, then see classmates' places and notes.</span>
+        <strong>Add one rec to unlock the live map.</strong>
+        <span>Name, one place, and one real tip keeps the exchange useful for everyone.</span>
       </div>
-      <button class="pin sa active" data-person="Sarah A." data-city="Lisbon" data-note="Lived here after college. Ask about dinners, day trips, and where to stay.">SA</button>
-      <button class="pin jm" data-person="Jesse M." data-city="Miami / Lisbon" data-note="Cafe and work spot notes, plus first-time Lisbon tips.">JM</button>
-      <button class="pin mb" data-person="Marco B." data-city="Porto" data-note="From nearby. Text before booking Sintra or a weekend outside the city.">MB</button>
-      <button class="pin nk" data-person="Niko K." data-city="Tokyo" data-note="Neighborhoods, ramen, and train logistics.">NK</button>
-      <button class="pin vr" data-person="Val R." data-city="Mexico City" data-note="Food, museums, and where to stay for a first trip.">VR</button>
-      <button id="youPin" class="pin you">YOU</button>
+      <button class="pin ghost sa active" data-person="Sarah A." data-city="Lisbon" data-note="Lived here after college. Ask about dinners, day trips, and where to stay.">SA</button>
+      <button class="pin ghost jm" data-person="Jesse M." data-city="Miami / Lisbon" data-note="Cafe and work spot notes, plus first-time Lisbon tips.">JM</button>
+      <button class="pin ghost mb" data-person="Marco B." data-city="Porto" data-note="From nearby. Text before booking Sintra or a weekend outside the city.">MB</button>
+      <button class="pin ghost nk" data-person="Niko K." data-city="Tokyo" data-note="Neighborhoods, ramen, and train logistics.">NK</button>
+      <button class="pin ghost vr" data-person="Val R." data-city="Mexico City" data-note="Food, museums, and where to stay for a first trip.">VR</button>
+      <section class="person-card" id="personCard">
+        <div class="person-top">
+          <div><h3 id="personName">Select a pin</h3><div class="person-meta" id="personMeta">Click a pin to read recs.</div></div>
+          <button class="close-detail" type="button" id="closeDetail" aria-label="Close detail">&times;</button>
+        </div>
+        <div class="person-note" id="personNote"></div>
+        <div class="rec-list" id="personRecs"></div>
+      </section>
       <div class="map-stats">
-        <div class="metric"><strong>68</strong><span>People</span></div>
-        <div class="metric"><strong>41</strong><span>Hometowns</span></div>
-        <div class="metric"><strong>29</strong><span>Current cities</span></div>
-        <div class="metric"><strong>184</strong><span>Notes</span></div>
+        <div class="metric"><strong id="statPeople">0</strong><span>People</span></div>
+        <div class="metric"><strong id="statPlaces">0</strong><span>Places</span></div>
+        <div class="metric"><strong id="statCities">0</strong><span>Cities</span></div>
+        <div class="metric"><strong id="statRecs">0</strong><span>Recs</span></div>
       </div>
     </section>
+
     <aside class="panel">
       <header class="form-head">
         <div class="eyebrow">Join the private class map</div>
-        <h2>Add yourself to see who you know.</h2>
-        <p>Start with your name, one place, and a few recs if you have them. Contact info can wait.</p>
-        <div class="requirement"><span class="pill">Name + one place unlock the map.</span> <span class="pill optional">1-3 rec bullets is perfect.</span></div>
+        <h1>Add yourself to see who you know.</h1>
+        <p>Start with your name, one place, and one useful rec. Contact info can wait.</p>
+        <div class="requirement"><span class="pill">Required: name, one place, and one rec to unlock the map.</span></div>
       </header>
       <form class="form-scroll" id="joinForm" autocomplete="off">
         <div class="two">
@@ -178,13 +183,21 @@
             <input class="input required" id="location" name="jterm-location" autocomplete="off" placeholder="Lima, Peru or Lisbon" required>
           </div>
         </div>
+        <div>
+          <label for="notes">One rec for that place</label>
+          <textarea class="textarea required" id="notes" name="jterm-notes" autocomplete="off" placeholder="Example: Stay near Barranco or Miraflores. Isolina for classic food. Text me before booking a day trip." required></textarea>
+          <div class="rec-nudge">One messy, useful tip is enough. You can add more later.</div>
+        </div>
+        <div class="scope-grid" aria-label="Recommendation sharing">
+          <label class="scope"><input type="radio" name="shareScope" value="everyone" checked><strong>Share with everyone on the map</strong>Classmates can read this rec after they add themselves.</label>
+          <label class="scope"><input type="radio" name="shareScope" value="jesse"><strong>Share only with Jesse</strong>Your pin shows, but this rec stays off the public map.</label>
+        </div>
         <div class="save-row">
           <button type="submit" class="btn primary" id="submitBtn" disabled>Add me and show the map</button>
         </div>
         <div class="saved-panel" id="savedPanel" role="status" aria-live="polite">
-          <strong>You're on the J-Term 2027 Atlas.</strong>
-          <span>Your pin and notes were saved. The preview is unlocked, and the full class map is ready.</span>
-          <a class="btn primary" id="fullMapLink" href="/join/CBSJ27">Open full class map</a>
+          <strong>You are on the J-Term 2027 Atlas.</strong>
+          <span id="savedText">Your pin and rec were saved. The live map is unlocked.</span>
         </div>
         <div class="two">
           <div>
@@ -197,11 +210,6 @@
           </div>
         </div>
         <div>
-          <label for="notes">Recs for my hometown / first place <span class="hint">(optional but helpful)</span></label>
-          <textarea class="textarea" id="notes" name="jterm-notes" autocomplete="off" placeholder="Example: Stay near Barranco or Miraflores. Isolina for classic food. Text me before booking a day trip."></textarea>
-          <div class="rec-nudge">Messy notes are good. Restaurants, neighborhoods, what to skip, timing tips.</div>
-        </div>
-        <div>
           <label for="otherNotes">Recs for other places I know <span class="hint">(optional)</span></label>
           <textarea class="textarea short" id="otherNotes" name="jterm-other-notes" autocomplete="off" placeholder="Example: Madrid - La Latina for tapas. Tokyo - stay near the Yamanote line first time."></textarea>
         </div>
@@ -210,29 +218,18 @@
           <div class="optional-inner">
             <div class="checks">
               <label class="check"><input type="checkbox" checked> Show my profile on the J-Term map</label>
-              <label class="check"><input type="checkbox"> Let classmates request my contact info later</label>
               <label class="check"><input type="checkbox" checked> Let people know they can reach out before a trip</label>
+              <label class="check"><input type="checkbox"> Let classmates request contact info later</label>
             </div>
-            <section class="preview">
-              <h3>What classmates see after you add yourself</h3>
-              <div class="profile">
-                <div class="avatar" id="previewInitials">YOU</div>
-                <div>
-                  <strong id="previewName">Your name</strong>
-                  <span id="previewCities">Your required location, plus anything optional you add</span>
-                </div>
-                <div class="note" id="previewNote">No recs needed to join. If you paste notes, they show here first. Later, Friend Atlas can group them into Eat, Drink, Stay, Do, Avoid, and Practical Tips.</div>
-              </div>
-            </section>
-            <button type="button" class="btn blue" id="previewBtn">Preview my pin</button>
           </div>
         </details>
       </form>
     </aside>
   </main>
-  <div class="toast" id="toast">Saved. You're on the J-Term Atlas.</div>
+  <div class="toast" id="toast">Saved. The live map is unlocked.</div>
+
   <script>
-    const JTERM_MAP_URL = '/join/CBSJ27';
+    const JTERM_CODE = 'CBSJ27';
     const form = document.getElementById('joinForm');
     const nameInput = document.getElementById('name');
     const locationInput = document.getElementById('location');
@@ -240,149 +237,154 @@
     const knownInput = document.getElementById('known');
     const notesInput = document.getElementById('notes');
     const otherNotesInput = document.getElementById('otherNotes');
-    const previewBtn = document.getElementById('previewBtn');
     const submitBtn = document.getElementById('submitBtn');
-    const previewInitials = document.getElementById('previewInitials');
-    const previewName = document.getElementById('previewName');
-    const previewCities = document.getElementById('previewCities');
-    const previewNote = document.getElementById('previewNote');
-    const youPin = document.getElementById('youPin');
     const mapPane = document.getElementById('mapPane');
     const unlockCard = document.getElementById('unlockCard');
     const toast = document.getElementById('toast');
     const savedPanel = document.getElementById('savedPanel');
-    const fullMapLink = document.getElementById('fullMapLink');
-    const samplePins = Array.from(document.querySelectorAll('.pin:not(#youPin)'));
+    const savedText = document.getElementById('savedText');
+    const mapSearch = document.getElementById('mapSearch');
+    const resetMapBtn = document.getElementById('resetMapBtn');
+    const personCard = document.getElementById('personCard');
+    const personName = document.getElementById('personName');
+    const personMeta = document.getElementById('personMeta');
+    const personNote = document.getElementById('personNote');
+    const personRecs = document.getElementById('personRecs');
+    const closeDetail = document.getElementById('closeDetail');
+    let friends = [];
+    let myPinIds = readMyPinIds();
     let savedSuccessfully = false;
 
-    function initials(name){
-      const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
-      return parts.map(part => part[0].toUpperCase()).join('') || 'YOU';
+    function esc(text){return String(text || '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+    function initials(name){return String(name||'').trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join('') || '?'}
+    function colorForName(name){const colors=['#177a5c','#2563eb','#e85d4f','#c58b18','#7c3aed','#0891b2'];let total=0;String(name||'').split('').forEach(char=>total+=char.charCodeAt(0));return colors[total%colors.length]}
+    function placeTypeLabel(type){return {hometown:'From here',current:'Lives here',lived:'Lived here',know:'Knows well'}[type] || 'Place'}
+    function recLabel(category){return {eat:'Eat',drink:'Drink',coffee:'Coffee',do:'Do',stay:'Stay',tip:'Tip'}[category] || 'Tip'}
+    function readMyPinIds(){try{const ids=JSON.parse(localStorage.getItem(`my-pins-${JTERM_CODE}`)||'[]');return Array.isArray(ids)?ids.map(Number).filter(Boolean):[]}catch{return[]}}
+    function rememberPins(ids){myPinIds=[...new Set(ids.map(Number).filter(Boolean))];localStorage.setItem(`my-pins-${JTERM_CODE}`,JSON.stringify(myPinIds));localStorage.setItem(`jterm-unlocked-${JTERM_CODE}`,'1')}
+    function hasUnlocked(){return myPinIds.length>0 || localStorage.getItem(`jterm-unlocked-${JTERM_CODE}`)==='1'}
+    function hasRequiredFields(){return nameInput.value.trim() && locationInput.value.trim() && notesInput.value.trim()}
+    function updateRequiredState(){submitBtn.disabled=savedSuccessfully || !hasRequiredFields()}
+    function showToast(text){toast.textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1900)}
+    function selectedShareScope(){return (document.querySelector('input[name="shareScope"]:checked') || {}).value || 'everyone'}
+    function projectedPosition(friend){
+      const x=Math.max(9,Math.min(91,((Number(friend.lng)+180)/360)*100));
+      const y=Math.max(17,Math.min(84,((90-Number(friend.lat))/180)*100));
+      return {left:`${x}%`,top:`${y}%`};
     }
-
-    function updatePreview(){
-      const name = nameInput.value.trim() || 'Your name';
-      const cities = [locationInput.value, currentInput.value, knownInput.value].map(v => v.trim()).filter(Boolean).join(' | ') || 'Your required location, plus anything optional you add';
-      const recNotes = [notesInput.value.trim(), otherNotesInput.value.trim()].filter(Boolean).join('\n\n');
-      const note = recNotes || 'No polished list needed. A few messy recs are enough, and you can always add more later.';
-      const short = initials(name);
-      previewName.textContent = name;
-      previewCities.textContent = cities;
-      previewNote.textContent = note;
-      previewInitials.textContent = short;
-      youPin.textContent = short;
-      youPin.classList.add('active');
-      samplePins.forEach(pin => pin.classList.remove('active'));
+    function friendMatches(friend,query){
+      if(!query)return true;
+      const recs=(friend.recommendations||[]).map(rec=>`${rec.name} ${rec.note||''} ${recLabel(rec.category)}`).join(' ');
+      return [friend.name,friend.city,friend.country||'',friend.note||'',placeTypeLabel(friend.pinType),recs].join(' ').toLowerCase().includes(query);
     }
-
-    function hasRequiredFields(){
-      return nameInput.value.trim().length > 0 && locationInput.value.trim().length > 0;
-    }
-
-    function updateRequiredState(){
-      submitBtn.disabled = savedSuccessfully || !hasRequiredFields();
-      updatePreview();
-    }
-
-    function unlockMap(){
-      mapPane.classList.remove('locked');
-      unlockCard.style.display = 'none';
-    }
-
-    function showToast(text){
-      toast.textContent = text;
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 1800);
-    }
-
-    async function postJson(url, body){
-      const response = await fetch(url, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      let data = null;
-      try { data = await response.json(); } catch {}
-      if (!response.ok) throw new Error(data?.error || `Request failed (${response.status})`);
+    async function postJson(url,body){
+      const response=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      let data=null;try{data=await response.json()}catch{}
+      if(!response.ok)throw new Error(data?.error || `Request failed (${response.status})`);
       return data;
     }
-
-    document.querySelectorAll('[data-focus]').forEach(button => {
-      button.addEventListener('click', () => {
-        const target = button.dataset.focus === 'notes' ? notesInput : nameInput;
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => target.focus(), 250);
+    async function loadAtlas(){
+      try{
+        const response=await fetch(`/api/atlas/code/${JTERM_CODE}`,{credentials:'same-origin',cache:'no-store'});
+        if(response.status===404){friends=[];renderStats();renderPins();return}
+        const data=await response.json();
+        if(!response.ok)throw new Error(data?.error || 'Could not load atlas');
+        friends=(data.friends||[]).map(friend=>({...friend,lat:Number(friend.lat),lng:Number(friend.lng)}));
+        renderStats(data.stats);
+        renderPins();
+      }catch(error){showToast(error.message || 'Could not load the live map yet.')}
+    }
+    function renderStats(stats={}){
+      document.getElementById('statPeople').textContent=stats.totalFriends || 0;
+      document.getElementById('statPlaces').textContent=stats.totalPlaces || friends.length || 0;
+      document.getElementById('statCities').textContent=stats.cities || 0;
+      document.getElementById('statRecs').textContent=stats.recommendations || 0;
+    }
+    function renderPins(){
+      document.querySelectorAll('.dynamic-pin').forEach(pin=>pin.remove());
+      const query=mapSearch.value.trim().toLowerCase();
+      friends.filter(friend=>Number.isFinite(friend.lat)&&Number.isFinite(friend.lng)&&friendMatches(friend,query)).forEach(friend=>{
+        const pin=document.createElement('button');
+        const mine=myPinIds.includes(friend.id);
+        pin.type='button';
+        pin.className=`pin dynamic dynamic-pin${mine?' mine':''}`;
+        pin.textContent=initials(friend.name);
+        pin.style.background=friend.color || colorForName(friend.name);
+        Object.assign(pin.style,projectedPosition(friend));
+        pin.addEventListener('click',()=>{
+          if(mapPane.classList.contains('locked')){showToast('Add yourself with one rec to unlock the map.');return}
+          showDetail(friend);
+        });
+        mapPane.appendChild(pin);
       });
-    });
-
-    samplePins.forEach(pin => {
-      pin.addEventListener('click', () => {
-        samplePins.forEach(other => other.classList.remove('active'));
-        youPin.classList.remove('active');
-        pin.classList.add('active');
-        previewInitials.textContent = pin.textContent.trim();
-        previewName.textContent = pin.dataset.person;
-        previewCities.textContent = pin.dataset.city;
-        previewNote.textContent = pin.dataset.note;
-      });
-    });
-
-    previewBtn.addEventListener('click', () => {
-      updatePreview();
-      if (!hasRequiredFields()) {
-        showToast('Add your name and one location first.');
-        (nameInput.value.trim() ? locationInput : nameInput).focus();
-        return;
-      }
-      unlockMap();
-      showToast('Preview updated.');
-    });
-
-    form.addEventListener('submit', event => {
+    }
+    function showDetail(friend){
+      personName.textContent=friend.name;
+      personMeta.textContent=`${placeTypeLabel(friend.pinType)} in ${friend.city}${friend.country?', '+friend.country:''}`;
+      personNote.textContent=friend.note || 'No public note yet.';
+      const recs=friend.recommendations || [];
+      personRecs.innerHTML=recs.length?recs.map(rec=>`<div class="rec"><strong>${esc(rec.name)}</strong><span>${esc(rec.note||'')}</span><em class="chip">${esc(recLabel(rec.category))}</em></div>`).join(''):'';
+      personCard.classList.add('show');
+      document.querySelectorAll('.pin').forEach(pin=>pin.classList.remove('active'));
+    }
+    function unlockMap(){
+      mapPane.classList.remove('locked');
+      unlockCard.style.display='none';
+      localStorage.setItem(`jterm-unlocked-${JTERM_CODE}`,'1');
+      renderPins();
+    }
+    form.addEventListener('submit',async event=>{
       event.preventDefault();
-      updatePreview();
-      if (!hasRequiredFields()) {
-        showToast('Only name and one location are required.');
-        (nameInput.value.trim() ? locationInput : nameInput).focus();
+      if(!hasRequiredFields()){
+        showToast('Add your name, one place, and one rec first.');
+        if(!nameInput.value.trim())nameInput.focus();else if(!locationInput.value.trim())locationInput.focus();else notesInput.focus();
         return;
       }
-      submitBtn.disabled = true;
-      const oldText = submitBtn.textContent;
-      submitBtn.textContent = 'Adding you...';
-      postJson('/api/jterm/join', {
-        name: nameInput.value.trim(),
-        location: locationInput.value.trim(),
-        current: currentInput.value.trim(),
-        known: knownInput.value.trim(),
-        notes: notesInput.value.trim(),
-        otherNotes: otherNotesInput.value.trim(),
-      }).then((data) => {
-        unlockMap();
-        if (data?.atlas?.code) {
-          localStorage.setItem('lastAtlas', data.atlas.code);
-          localStorage.setItem(`my-name-${data.atlas.code}`, nameInput.value.trim());
-          const ids = (data.friends || []).map(friend => friend.id).filter(Boolean);
-          localStorage.setItem(`my-pins-${data.atlas.code}`, JSON.stringify(ids));
-          if (ids[0]) localStorage.setItem(`my-pin-${data.atlas.code}`, String(ids[0]));
-        }
-        savedSuccessfully = true;
-        fullMapLink.href = data.redirectUrl || JTERM_MAP_URL;
+      submitBtn.disabled=true;
+      const oldText=submitBtn.textContent;
+      submitBtn.textContent='Adding you...';
+      try{
+        const shareScope=selectedShareScope();
+        const data=await postJson('/api/jterm/join',{
+          name:nameInput.value.trim(),
+          location:locationInput.value.trim(),
+          current:currentInput.value.trim(),
+          known:knownInput.value.trim(),
+          notes:notesInput.value.trim(),
+          otherNotes:otherNotesInput.value.trim(),
+          shareScope,
+        });
+        const ids=(data.friends||[]).map(friend=>friend.id).filter(Boolean);
+        rememberPins(ids);
+        savedSuccessfully=true;
         savedPanel.classList.add('show');
-        submitBtn.textContent = 'Saved';
-        submitBtn.disabled = true;
-        showToast("Saved. You're on the J-Term Atlas.");
-      }).catch((error) => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = oldText;
+        savedText.textContent=shareScope==='jesse'
+          ? 'Your pin was saved. Your rec was shared only with Jesse and is hidden from the public map.'
+          : 'Your pin and rec were saved. The live map is unlocked.';
+        submitBtn.textContent='Saved - map is live';
+        submitBtn.disabled=true;
+        await loadAtlas();
+        unlockMap();
+        const firstSaved=friends.find(friend=>ids.includes(friend.id));
+        if(firstSaved)showDetail(firstSaved);
+        showToast('Saved. The live map is unlocked.');
+      }catch(error){
+        submitBtn.disabled=false;
+        submitBtn.textContent=oldText;
         showToast(error.message || 'Could not save yet.');
+      }
+    });
+    document.querySelectorAll('[data-person]').forEach(pin=>{
+      pin.addEventListener('click',()=>{
+        showToast('Add yourself with one rec to unlock the live map.');
       });
     });
-
-    [nameInput, locationInput, currentInput, knownInput, notesInput, otherNotesInput].forEach(input => {
-      input.addEventListener('input', updateRequiredState);
-    });
+    [nameInput,locationInput,notesInput].forEach(input=>input.addEventListener('input',updateRequiredState));
+    mapSearch.addEventListener('input',renderPins);
+    resetMapBtn.addEventListener('click',()=>{mapSearch.value='';personCard.classList.remove('show');renderPins()});
+    closeDetail.addEventListener('click',()=>personCard.classList.remove('show'));
     updateRequiredState();
+    loadAtlas().then(()=>{if(hasUnlocked())unlockMap()});
   </script>
 </body>
 </html>

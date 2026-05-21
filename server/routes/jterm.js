@@ -162,7 +162,7 @@ function noteForPlace(text, placeName) {
   return (matching.length ? matching : lines).join('\n').slice(0, 500);
 }
 
-async function savePlace({ atlasId, sessionId, name, place, note, pinType, color }) {
+async function savePlace({ atlasId, sessionId, name, place, note, pinType, color, publishRecommendations = true }) {
   const geo = await geocodeLocation(place);
   if (!geo || Number.isNaN(geo.lat) || Number.isNaN(geo.lng)) {
     const error = new Error(`I could not find "${place}". Try "City, Country" or a nearby major city.`);
@@ -182,7 +182,7 @@ async function savePlace({ atlasId, sessionId, name, place, note, pinType, color
     pinType,
   });
 
-  const recs = recommendationsFromNote(note, geo.city);
+  const recs = publishRecommendations ? recommendationsFromNote(note, geo.city) : [];
   const savedRecommendations = await db.replaceRecsForFriend(friend.id, recs);
   return { ...friend, recommendations: savedRecommendations };
 }
@@ -192,8 +192,9 @@ router.post('/join',
   body('location').isString().trim().isLength({ min: 1, max: 255 }).withMessage('One location is required'),
   body('current').optional({ values: 'falsy' }).isString().trim().isLength({ max: 255 }).withMessage('Current city is too long'),
   body('known').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }).withMessage('Other places is too long'),
-  body('notes').optional({ values: 'falsy' }).isString().trim().isLength({ max: 1200 }).withMessage('Recs are too long'),
+  body('notes').isString().trim().isLength({ min: 1, max: 1200 }).withMessage('Add one rec to unlock the map'),
   body('otherNotes').optional({ values: 'falsy' }).isString().trim().isLength({ max: 1200 }).withMessage('Other recs are too long'),
+  body('shareScope').optional({ values: 'falsy' }).isString().custom(value => ['everyone', 'jesse'].includes(value)).withMessage('Invalid sharing choice'),
   validate,
   async (req, res) => {
     try {
@@ -207,6 +208,8 @@ router.post('/join',
       const knownPlaces = splitPlaces(req.body.known);
       const notes = cleanNote(req.body.notes, 1200);
       const otherNotes = cleanNote(req.body.otherNotes, 1200);
+      const shareScope = req.body.shareScope === 'jesse' ? 'jesse' : 'everyone';
+      const publishRecs = shareScope === 'everyone';
       const savedPlaces = [];
 
       savedPlaces.push(await savePlace({
@@ -214,10 +217,23 @@ router.post('/join',
         sessionId,
         name,
         place: primaryLocation,
-        note: notes,
+        note: publishRecs ? notes : 'Recs shared privately with Jesse.',
         pinType: 'hometown',
         color: '#0891b2',
+        publishRecommendations: publishRecs,
       }));
+
+      if (!publishRecs) {
+        await db.addJtermPrivateRec({
+          atlasId: atlas.id,
+          friendId: savedPlaces[0]?.id,
+          sessionId,
+          name,
+          place: primaryLocation,
+          notes,
+          otherNotes,
+        });
+      }
 
       const seen = new Set([normalizeLocation(primaryLocation)]);
       if (current && !seen.has(normalizeLocation(current))) {
@@ -243,9 +259,10 @@ router.post('/join',
           sessionId,
           name,
           place,
-          note: placeNote,
+          note: publishRecs ? placeNote : (placeNote ? 'Recs shared privately with Jesse.' : ''),
           pinType: 'know',
           color: '#177a5c',
+          publishRecommendations: publishRecs,
         }));
       }
 
@@ -260,6 +277,7 @@ router.post('/join',
         success: true,
         atlas: { id: atlas.id, code: atlas.code, mapName: atlas.map_name || MAP_NAME },
         friends: savedPlaces.map((place) => ({ id: place.id, name: place.name })),
+        shareScope,
         redirectUrl: `/join/${atlas.code}`,
       });
     } catch (error) {
