@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Join the CBS J-Term 2027 Atlas</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -61,8 +63,16 @@
     .check input{margin-top:2px;accent-color:var(--green)}
 
     .map{position:relative;min-height:100vh;overflow:hidden;background:#e7f0ec}
-    .map svg{position:absolute;inset:0;width:100%;height:100%}
-    .map-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(21,33,29,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(21,33,29,.07) 1px,transparent 1px);background-size:86px 86px;opacity:.38}
+    #realMap{position:absolute;inset:0;z-index:1;opacity:0;pointer-events:none;background:#dfece8;transition:opacity .22s}
+    .map.live #realMap{opacity:1;pointer-events:auto}
+    .leaflet-container{font-family:Inter,system-ui,-apple-system,sans-serif;background:#dfece8}
+    .leaflet-control-attribution{font-size:10px}
+    .leaflet-control-zoom a{color:var(--ink)}
+    .pin-marker{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;color:white;font-weight:900;font-size:12px;box-shadow:0 10px 24px rgba(21,33,29,.28)}
+    .pin-marker.mine{box-shadow:0 0 0 9px rgba(8,145,178,.18),0 12px 28px rgba(21,33,29,.3)}
+    .map svg{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+    .map-grid{position:absolute;inset:0;z-index:1;background-image:linear-gradient(rgba(21,33,29,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(21,33,29,.07) 1px,transparent 1px);background-size:86px 86px;opacity:.38;pointer-events:none}
+    .map.live svg,.map.live .map-grid{display:none}
     .nav{position:absolute;top:18px;left:18px;z-index:5;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:8px;padding:12px 14px;box-shadow:0 12px 30px rgba(21,33,29,.10)}
     .brand{font-weight:900}
     .brand span{display:block;color:var(--muted);font-size:11px;font-weight:800;margin-top:1px;text-transform:uppercase}
@@ -71,7 +81,7 @@
     .map-tools input{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.94);border-radius:8px;padding:11px 12px;box-shadow:0 12px 30px rgba(21,33,29,.08)}
     .map-tools input:focus{outline:2px solid rgba(37,99,235,.16);border-color:var(--blue)}
     .hero-card{position:absolute;left:24px;top:96px;z-index:4;width:min(390px,calc(100% - 48px));background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:8px;padding:18px;box-shadow:0 16px 36px rgba(21,33,29,.12)}
-    .map:not(.locked) .hero-card{opacity:.92}
+    .map:not(.locked) .hero-card{display:none}
     .hero-card h2{font-size:30px;line-height:1.08;font-weight:900;letter-spacing:0;margin-bottom:10px}
     .lead{color:var(--muted);font-size:14px;max-width:34em}
     .value-grid{display:grid;gap:7px;margin-top:14px}
@@ -114,6 +124,7 @@
 <body>
   <main class="shell">
     <section class="map locked" id="mapPane" aria-label="CBS J-Term 2027 map">
+      <div id="realMap"></div>
       <svg viewBox="0 0 1200 760" aria-hidden="true">
         <rect width="1200" height="760" fill="#e7f0ec"/>
         <g fill="#c7ddd3" stroke="#b7cfc4" stroke-width="2">
@@ -252,6 +263,8 @@
     const personRecs = document.getElementById('personRecs');
     const closeDetail = document.getElementById('closeDetail');
     let friends = [];
+    let map = null;
+    let markers = [];
     let myPinIds = readMyPinIds();
     let savedSuccessfully = false;
 
@@ -267,15 +280,31 @@
     function updateRequiredState(){submitBtn.disabled=savedSuccessfully || !hasRequiredFields()}
     function showToast(text){toast.textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1900)}
     function selectedShareScope(){return (document.querySelector('input[name="shareScope"]:checked') || {}).value || 'everyone'}
-    function projectedPosition(friend){
-      const x=Math.max(9,Math.min(91,((Number(friend.lng)+180)/360)*100));
-      const y=Math.max(17,Math.min(84,((90-Number(friend.lat))/180)*100));
-      return {left:`${x}%`,top:`${y}%`};
+    function initMap(){
+      if(map)return;
+      map=L.map('realMap',{zoomControl:true,attributionControl:true,minZoom:2,maxZoom:14,worldCopyJump:true}).setView([20,0],2);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+        attribution:'&copy; OSM &copy; CARTO',subdomains:'abcd',maxZoom:14
+      }).addTo(map);
+    }
+    function markerIcon(friend){
+      const mine=myPinIds.includes(friend.id)?' mine':'';
+      const color=friend.color || colorForName(friend.name);
+      return L.divIcon({
+        className:'',
+        html:`<div class="pin-marker${mine}" style="background:${color}">${esc(initials(friend.name))}</div>`,
+        iconSize:[34,34],
+        iconAnchor:[17,17],
+      });
     }
     function friendMatches(friend,query){
       if(!query)return true;
       const recs=(friend.recommendations||[]).map(rec=>`${rec.name} ${rec.note||''} ${recLabel(rec.category)}`).join(' ');
       return [friend.name,friend.city,friend.country||'',friend.note||'',placeTypeLabel(friend.pinType),recs].join(' ').toLowerCase().includes(query);
+    }
+    function visibleFriends(){
+      const query=mapSearch.value.trim().toLowerCase();
+      return friends.filter(friend=>Number.isFinite(friend.lat)&&Number.isFinite(friend.lng)&&friendMatches(friend,query));
     }
     async function postJson(url,body){
       const response=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -302,21 +331,25 @@
     }
     function renderPins(){
       document.querySelectorAll('.dynamic-pin').forEach(pin=>pin.remove());
-      const query=mapSearch.value.trim().toLowerCase();
-      friends.filter(friend=>Number.isFinite(friend.lat)&&Number.isFinite(friend.lng)&&friendMatches(friend,query)).forEach(friend=>{
-        const pin=document.createElement('button');
-        const mine=myPinIds.includes(friend.id);
-        pin.type='button';
-        pin.className=`pin dynamic dynamic-pin${mine?' mine':''}`;
-        pin.textContent=initials(friend.name);
-        pin.style.background=friend.color || colorForName(friend.name);
-        Object.assign(pin.style,projectedPosition(friend));
-        pin.addEventListener('click',()=>{
+      if(!map)return;
+      markers.forEach(marker=>map.removeLayer(marker));
+      markers=[];
+      const list=visibleFriends();
+      list.forEach(friend=>{
+        const marker=L.marker([friend.lat,friend.lng],{icon:markerIcon(friend),title:friend.name}).addTo(map);
+        marker.on('click',()=>{
           if(mapPane.classList.contains('locked')){showToast('Add yourself with one rec to unlock the map.');return}
           showDetail(friend);
         });
-        mapPane.appendChild(pin);
+        markers.push(marker);
       });
+      fitMap(list);
+    }
+    function fitMap(list){
+      if(!map)return;
+      if(!list.length){map.setView([20,0],2);return}
+      if(list.length===1){map.setView([list[0].lat,list[0].lng],4);return}
+      map.fitBounds(L.latLngBounds(list.map(friend=>[friend.lat,friend.lng])),{padding:[70,70],maxZoom:6});
     }
     function showDetail(friend){
       personName.textContent=friend.name;
@@ -329,9 +362,10 @@
     }
     function unlockMap(){
       mapPane.classList.remove('locked');
+      mapPane.classList.add('live');
       unlockCard.style.display='none';
       localStorage.setItem(`jterm-unlocked-${JTERM_CODE}`,'1');
-      renderPins();
+      setTimeout(()=>{map.invalidateSize();renderPins()},80);
     }
     form.addEventListener('submit',async event=>{
       event.preventDefault();
@@ -383,6 +417,7 @@
     mapSearch.addEventListener('input',renderPins);
     resetMapBtn.addEventListener('click',()=>{mapSearch.value='';personCard.classList.remove('show');renderPins()});
     closeDetail.addEventListener('click',()=>personCard.classList.remove('show'));
+    initMap();
     updateRequiredState();
     loadAtlas().then(()=>{if(hasUnlocked())unlockMap()});
   </script>
