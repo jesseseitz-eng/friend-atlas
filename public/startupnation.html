@@ -45,6 +45,8 @@
     .btn:active{transform:scale(.98)}
     .save-row .primary{width:100%;padding:12px 14px;font-size:15px}
     .save-row .primary:disabled{opacity:.55;cursor:not-allowed}
+    .optional-submit{width:100%;padding:12px 14px;font-size:15px}
+    .optional-submit:disabled{opacity:.55;cursor:not-allowed}
     .saved-panel{display:none;border:1px solid rgba(23,122,92,.18);background:#eef7f2;border-radius:8px;padding:10px 11px;color:#315d50;gap:4px}
     .saved-panel.show{display:grid}
     .saved-panel strong{color:#0f684f;font-size:14px}
@@ -229,6 +231,7 @@
               <label for="otherNotes">Paste recs for those places <span class="hint">(optional)</span></label>
               <textarea class="textarea short" id="otherNotes" name="startup-other-notes" autocomplete="off" placeholder="Example: Miami - Wynwood for events. New York - Flatiron/Chelsea for investor coffee. London - Shoreditch for startup drinks."></textarea>
             </div>
+            <button type="submit" class="btn primary optional-submit" id="optionalSubmitBtn" disabled>Save everything and show the map</button>
           </div>
         </details>
       </form>
@@ -254,6 +257,7 @@
     const notesInput = document.getElementById('notes');
     const otherNotesInput = document.getElementById('otherNotes');
     const submitBtn = document.getElementById('submitBtn');
+    const optionalSubmitBtn = document.getElementById('optionalSubmitBtn');
     const mapPane = document.getElementById('mapPane');
     const unlockCard = document.getElementById('unlockCard');
     const toast = document.getElementById('toast');
@@ -290,7 +294,11 @@
       ].find(([key])=>value.includes(key));
       return match?match[1]:{city:place.trim()||'Tel Aviv',country:'',lat:32.0853,lng:34.7818};
     }
-    function updateRequiredState(){submitBtn.disabled=savedSuccessfully || !hasRequiredFields()}
+    function updateRequiredState(){
+      const disabled=savedSuccessfully || !hasRequiredFields();
+      submitBtn.disabled=disabled;
+      optionalSubmitBtn.disabled=disabled;
+    }
     function showToast(text){toast.textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1900)}
     function focusNextOnEnter(input,next){
       input.addEventListener('keydown',event=>{
@@ -413,7 +421,9 @@
         savedPanel.classList.add('show');
         savedText.textContent='Demo saved. The real class link will save this for real and update everyone else.';
         submitBtn.textContent='Demo saved - map is live';
+        optionalSubmitBtn.textContent='Demo saved - map is live';
         submitBtn.disabled=true;
+        optionalSubmitBtn.disabled=true;
         unlockMap();
         renderStats(buildStats(friends));
         renderPins();
@@ -422,8 +432,11 @@
         return;
       }
       submitBtn.disabled=true;
+      optionalSubmitBtn.disabled=true;
       const oldText=submitBtn.textContent;
+      const oldOptionalText=optionalSubmitBtn.textContent;
       submitBtn.textContent='Adding you...';
+      optionalSubmitBtn.textContent='Adding you...';
       try{
         const data=await postJson('/api/startupnation/join',{
           name:nameInput.value.trim(),
@@ -440,7 +453,9 @@
         savedPanel.classList.add('show');
         savedText.textContent='Your pin and rec were saved. The live map is unlocked.';
         submitBtn.textContent='Saved - map is live';
+        optionalSubmitBtn.textContent='Saved - map is live';
         submitBtn.disabled=true;
+        optionalSubmitBtn.disabled=true;
         await loadAtlas();
         unlockMap();
         const firstSaved=friends.find(friend=>ids.includes(friend.id));
@@ -448,7 +463,9 @@
         showToast('Saved. The live map is unlocked.');
       }catch(error){
         submitBtn.disabled=false;
+        optionalSubmitBtn.disabled=false;
         submitBtn.textContent=oldText;
+        optionalSubmitBtn.textContent=oldOptionalText;
         showToast(error.message || 'Could not save yet.');
       }
     });
