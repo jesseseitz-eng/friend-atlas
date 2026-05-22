@@ -76,6 +76,8 @@
     .nav{position:absolute;top:18px;left:18px;z-index:5;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:8px;padding:12px 14px;box-shadow:0 12px 30px rgba(21,33,29,.10)}
     .brand{font-weight:900}
     .brand span{display:block;color:var(--muted);font-size:11px;font-weight:800;margin-top:1px;text-transform:uppercase}
+    .demo-badge{display:none;border-radius:999px;background:#fff3d6;color:#7a4d00;border:1px solid rgba(197,139,24,.28);padding:5px 8px;font-size:10px;font-weight:900;text-transform:uppercase}
+    .demo .demo-badge{display:inline-flex}
     .map-tools{position:absolute;top:18px;right:18px;z-index:6;display:flex;gap:8px;width:min(390px,calc(100% - 300px))}
     .map.locked .map-tools{display:none}
     .map-tools input{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.94);border-radius:8px;padding:11px 12px;box-shadow:0 12px 30px rgba(21,33,29,.08)}
@@ -136,7 +138,7 @@
         </g>
       </svg>
       <div class="map-grid"></div>
-      <nav class="nav"><div class="brand">Startup Nation Atlas <span>powered by Friend Atlas</span></div></nav>
+      <nav class="nav"><div class="brand">Startup Nation Atlas <span>powered by Friend Atlas</span></div><div class="demo-badge">Demo preview</div></nav>
       <div class="map-tools">
         <input id="mapSearch" autocomplete="off" placeholder="Search a city, classmate, or rec">
         <button class="btn" type="button" id="resetMapBtn">Reset</button>
@@ -148,6 +150,7 @@
         <div class="value-grid">
           <div class="value"><strong>Find people</strong><span>Who is in Tel Aviv, NYC, Miami, or nearby?</span></div>
           <div class="value"><strong>Read real notes</strong><span>Founders, neighborhoods, coffee spots, warnings, and timing tips.</span></div>
+          <div class="value"><strong>How it fills</strong><span>Every classmate adds one place and one useful tip; pins appear live.</span></div>
           <div class="value"><strong>Add more later</strong><span>Start with one rec, then improve your places anytime.</span></div>
         </div>
       </section>
@@ -156,7 +159,7 @@
         <span>Name, one place, and one real tip keeps the exchange useful for everyone.</span>
       </div>
       <button class="pin ghost sa active" data-person="Ari R." data-city="Tel Aviv" data-note="Knows the startup scene, neighborhoods, and where to take first meetings.">AR</button>
-      <button class="pin ghost jm" data-person="Jesse M." data-city="Miami / New York" data-note="Investor coffee spots, work spots, and first-time Miami tips.">JM</button>
+      <button class="pin ghost jm" data-person="Jordan M." data-city="Miami / New York" data-note="Investor coffee spots, work spots, and first-time Miami tips.">JM</button>
       <button class="pin ghost mb" data-person="Maya B." data-city="Jerusalem" data-note="From nearby. Ask about day trips, history, and where to stay.">MB</button>
       <button class="pin ghost nk" data-person="Noa K." data-city="New York" data-note="Founder events, neighborhoods, and meeting logistics.">NK</button>
       <button class="pin ghost vr" data-person="Val R." data-city="Mexico City" data-note="Food, meetings, museums, and where to stay for a first trip.">VR</button>
@@ -181,7 +184,7 @@
         <div class="eyebrow">Join the Startup Nation map</div>
         <h1>Add yourself to see who you know.</h1>
         <p>Start with your name, one place, and one useful rec from a city or startup market. Contact info can wait.</p>
-        <div class="requirement"><span class="pill">Required: name, one place, and one rec to unlock the map.</span></div>
+        <div class="requirement"><span class="pill">Required: name, one place, and one rec to unlock the map.</span> It fills in live as classmates add themselves.</div>
       </header>
       <form class="form-scroll" id="joinForm" autocomplete="off">
         <div class="two">
@@ -200,8 +203,8 @@
           <div class="rec-nudge">One messy, useful tip is enough. You can add more later.</div>
         </div>
         <div class="scope-grid" aria-label="Recommendation sharing">
-          <label class="scope"><input type="radio" name="shareScope" value="everyone" checked><strong>Share with everyone on the map</strong>Classmates can read this rec after they add themselves.</label>
-          <label class="scope"><input type="radio" name="shareScope" value="jesse"><strong>Share only with Jesse</strong>Your pin shows, but this rec stays off the public map.</label>
+          <label class="scope"><input type="radio" name="shareScope" value="everyone" checked><strong>Class-visible</strong>Classmates can read this rec after they add themselves.</label>
+          <label class="scope"><input type="radio" name="shareScope" value="private"><strong>Private note to host</strong>Your pin shows, but this rec stays off the class map.</label>
         </div>
         <div class="save-row">
           <button type="submit" class="btn primary" id="submitBtn" disabled>Add me and show the map</button>
@@ -241,6 +244,14 @@
 
   <script>
     const ATLAS_CODE = 'STNATN';
+    const DEMO_MODE = new URLSearchParams(window.location.search).has('demo');
+    const DEMO_FRIENDS = [
+      {id:-101,name:'Ari R.',city:'Tel Aviv',country:'Israel',lat:32.0853,lng:34.7818,note:'Good for founder meetings, cyber/AI intros, and first-time logistics. Traffic changes the day, so leave more time than you think.',color:'#e85d4f',pinType:'hometown',recommendations:[{category:'coffee',name:'Rothschild coffee meetings',note:'Easy central default for investor or founder coffees.'},{category:'tip',name:'Schedule buffer',note:'Avoid stacking meetings across the city without padding.'}]},
+      {id:-102,name:'Maya B.',city:'Jerusalem',country:'Israel',lat:31.7683,lng:35.2137,note:'Best for history, policy conversations, and a very different view of the country from Tel Aviv.',color:'#177a5c',pinType:'know',recommendations:[{category:'do',name:'Old City early',note:'Go early before the day gets crowded.'},{category:'tip',name:'Ask before day trips',note:'Timing and transportation matter more than distance.'}]},
+      {id:-103,name:'Noa K.',city:'New York City',country:'USA',lat:40.7128,lng:-74.006,note:'Founder events, fintech contacts, and practical places for quick meetings.',color:'#c58b18',pinType:'current',recommendations:[{category:'coffee',name:'Flatiron or Chelsea',note:'Reliable areas for investor coffee meetings.'}]},
+      {id:-104,name:'Samir A.',city:'Dubai',country:'UAE',lat:25.2048,lng:55.2708,note:'Useful for MENA market questions, conference timing, and founder/operator intros.',color:'#2563eb',pinType:'know',recommendations:[{category:'tip',name:'Check event weeks',note:'Hotel prices and meeting availability change a lot during conferences.'}]},
+      {id:-105,name:'Val R.',city:'Mexico City',country:'Mexico',lat:19.4326,lng:-99.1332,note:'Great for food, neighborhoods, and startup ecosystem context.',color:'#7c3aed',pinType:'hometown',recommendations:[{category:'stay',name:'Roma or Condesa',note:'Easy first-trip base with food and walkability.'}]}
+    ];
     const form = document.getElementById('joinForm');
     const nameInput = document.getElementById('name');
     const locationInput = document.getElementById('location');
@@ -277,6 +288,14 @@
     function rememberPins(ids){myPinIds=[...new Set(ids.map(Number).filter(Boolean))];localStorage.setItem(`my-pins-${ATLAS_CODE}`,JSON.stringify(myPinIds));localStorage.setItem(`startupnation-unlocked-${ATLAS_CODE}`,'1')}
     function hasUnlocked(){return myPinIds.length>0 || localStorage.getItem(`startupnation-unlocked-${ATLAS_CODE}`)==='1'}
     function hasRequiredFields(){return nameInput.value.trim() && locationInput.value.trim() && notesInput.value.trim()}
+    function buildStats(list){return{totalFriends:new Set(list.map(friend=>friend.name)).size,totalPlaces:list.length,cities:new Set(list.map(friend=>`${friend.city}|${friend.country||''}`)).size,recommendations:list.reduce((sum,friend)=>sum+(friend.recommendations||[]).length,0)}}
+    function demoGeo(place){
+      const value=String(place||'').toLowerCase();
+      const match=[
+        ['tel aviv',{city:'Tel Aviv',country:'Israel',lat:32.0853,lng:34.7818}],['jerusalem',{city:'Jerusalem',country:'Israel',lat:31.7683,lng:35.2137}],['new york',{city:'New York City',country:'USA',lat:40.7128,lng:-74.006}],['nyc',{city:'New York City',country:'USA',lat:40.7128,lng:-74.006}],['miami',{city:'Miami',country:'USA',lat:25.7617,lng:-80.1918}],['dubai',{city:'Dubai',country:'UAE',lat:25.2048,lng:55.2708}],['mexico',{city:'Mexico City',country:'Mexico',lat:19.4326,lng:-99.1332}]
+      ].find(([key])=>value.includes(key));
+      return match?match[1]:{city:place.trim()||'Tel Aviv',country:'',lat:32.0853,lng:34.7818};
+    }
     function updateRequiredState(){submitBtn.disabled=savedSuccessfully || !hasRequiredFields()}
     function showToast(text){toast.textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1900)}
     function selectedShareScope(){return (document.querySelector('input[name="shareScope"]:checked') || {}).value || 'everyone'}
@@ -315,11 +334,17 @@
     async function loadAtlas(){
       try{
         const response=await fetch(`/api/atlas/code/${ATLAS_CODE}`,{credentials:'same-origin',cache:'no-store'});
-        if(response.status===404){friends=[];renderStats();renderPins();return}
+        if(response.status===404){
+          friends=DEMO_MODE?[...DEMO_FRIENDS]:[];
+          renderStats(DEMO_MODE?buildStats(friends):{});
+          renderPins();
+          return
+        }
         const data=await response.json();
         if(!response.ok)throw new Error(data?.error || 'Could not load atlas');
-        friends=(data.friends||[]).map(friend=>({...friend,lat:Number(friend.lat),lng:Number(friend.lng)}));
-        renderStats(data.stats);
+        const liveFriends=(data.friends||[]).map(friend=>({...friend,lat:Number(friend.lat),lng:Number(friend.lng)}));
+        friends=DEMO_MODE?[...DEMO_FRIENDS,...liveFriends]:liveFriends;
+        renderStats(DEMO_MODE?buildStats(friends):data.stats);
         renderPins();
       }catch(error){showToast(error.message || 'Could not load the live map yet.')}
     }
@@ -364,7 +389,7 @@
       mapPane.classList.remove('locked');
       mapPane.classList.add('live');
       unlockCard.style.display='none';
-      localStorage.setItem(`startupnation-unlocked-${ATLAS_CODE}`,'1');
+      if(!DEMO_MODE)localStorage.setItem(`startupnation-unlocked-${ATLAS_CODE}`,'1');
       setTimeout(()=>{map.invalidateSize();renderPins()},80);
     }
     form.addEventListener('submit',async event=>{
@@ -372,6 +397,23 @@
       if(!hasRequiredFields()){
         showToast('Add your name, one place, and one rec first.');
         if(!nameInput.value.trim())nameInput.focus();else if(!locationInput.value.trim())locationInput.focus();else notesInput.focus();
+        return;
+      }
+      if(DEMO_MODE){
+        const geo=demoGeo(locationInput.value.trim());
+        const demoFriend={id:-999,name:nameInput.value.trim(),city:geo.city,country:geo.country,lat:geo.lat,lng:geo.lng,note:notesInput.value.trim(),color:'#0891b2',pinType:'hometown',recommendations:[{category:'tip',name:notesInput.value.trim().slice(0,80),note:notesInput.value.trim()}]};
+        friends=[demoFriend,...DEMO_FRIENDS];
+        myPinIds=[demoFriend.id];
+        savedSuccessfully=true;
+        savedPanel.classList.add('show');
+        savedText.textContent='Demo saved. The real class link will save this for real and update everyone else.';
+        submitBtn.textContent='Demo saved - map is live';
+        submitBtn.disabled=true;
+        unlockMap();
+        renderStats(buildStats(friends));
+        renderPins();
+        showDetail(demoFriend);
+        showToast('Demo saved. The map is populated.');
         return;
       }
       submitBtn.disabled=true;
@@ -392,8 +434,8 @@
         rememberPins(ids);
         savedSuccessfully=true;
         savedPanel.classList.add('show');
-        savedText.textContent=shareScope==='jesse'
-          ? 'Your pin was saved. Your rec was shared only with Jesse and is hidden from the public map.'
+        savedText.textContent=shareScope==='private'
+          ? 'Your pin was saved. Your rec was shared privately with the class host and is hidden from the class map.'
           : 'Your pin and rec were saved. The live map is unlocked.';
         submitBtn.textContent='Saved - map is live';
         submitBtn.disabled=true;
@@ -418,8 +460,9 @@
     resetMapBtn.addEventListener('click',()=>{mapSearch.value='';personCard.classList.remove('show');renderPins()});
     closeDetail.addEventListener('click',()=>personCard.classList.remove('show'));
     initMap();
+    if(DEMO_MODE)mapPane.classList.add('demo');
     updateRequiredState();
-    loadAtlas().then(()=>{if(hasUnlocked())unlockMap()});
+    loadAtlas().then(()=>{if(DEMO_MODE||hasUnlocked())unlockMap()});
   </script>
 </body>
 </html>
