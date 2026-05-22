@@ -111,19 +111,20 @@
     .map:not(.locked) .roster-card{display:block}
     .roster-card h3{font-size:17px;line-height:1.15;margin-bottom:3px}
     .roster-card p{color:var(--muted);font-size:12px;margin-bottom:10px}
-    .roster-list{display:grid;gap:7px;max-height:310px;overflow:auto}
+    .roster-list{display:grid;gap:7px;max-height:clamp(150px,24vh,290px);overflow:auto}
     .roster-item{width:100%;display:grid;grid-template-columns:34px 1fr;gap:9px;align-items:center;border:1px solid var(--line);border-radius:8px;background:#f8fbf9;padding:8px;text-align:left;color:var(--ink)}
-    .roster-item:hover{border-color:rgba(37,99,235,.26);background:#fff}
+    .roster-item:hover,.roster-item.active{border-color:rgba(37,99,235,.34);background:#fff;box-shadow:0 8px 20px rgba(21,33,29,.08)}
     .roster-avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:white;font-size:12px;font-weight:900}
     .roster-item strong{display:block;font-size:13px;line-height:1.2}
     .roster-item span{display:block;color:var(--muted);font-size:12px;margin-top:1px}
     .empty-roster{border:1px solid var(--line);border-radius:8px;background:#f8fbf9;padding:9px;color:var(--muted);font-size:12px}
-    .person-card{position:absolute;right:18px;top:82px;z-index:7;width:min(360px,calc(100% - 36px));display:none;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:0 16px 36px rgba(21,33,29,.14)}
+    .person-card{position:absolute;right:18px;bottom:12px;z-index:7;width:min(360px,calc(100% - 36px));max-height:min(390px,calc(100vh - 340px));overflow:auto;display:none;background:rgba(255,255,255,.97);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:0 18px 44px rgba(21,33,29,.18)}
     .person-card.show{display:block}
     .person-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
     .person-card h3{font-size:18px;line-height:1.15;margin-bottom:4px}
     .person-meta{font-size:13px;color:var(--muted)}
     .person-note{margin-top:11px;border-top:1px solid var(--line);padding-top:10px;color:var(--muted);font-size:13px;white-space:pre-wrap}
+    .person-helper{margin-top:8px;color:var(--soft);font-size:12px}
     .rec-list{display:grid;gap:7px;margin-top:10px}
     .rec{border:1px solid var(--line);border-radius:8px;background:#f8fbf9;padding:8px}
     .rec strong{display:block;font-size:13px}
@@ -133,7 +134,7 @@
     .toast{position:fixed;right:18px;bottom:18px;background:#15211d;color:white;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:800;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);transition:.18s;z-index:10}
     .toast.show{opacity:1;transform:translateY(0)}
     @media(max-width:980px){
-      .shell{grid-template-columns:1fr}.panel{order:-1;min-height:auto;border-right:0;border-top:1px solid var(--line);box-shadow:none}.map{min-height:620px}.two{grid-template-columns:1fr}.hero-card{top:96px}.map-stats{grid-template-columns:repeat(2,1fr)}.map-tools{top:82px;left:18px;right:18px;width:auto}.person-card{top:136px}.value{grid-template-columns:1fr}.form-head h1{font-size:25px}
+      .shell{grid-template-columns:1fr}.panel{order:-1;min-height:auto;border-right:0;border-top:1px solid var(--line);box-shadow:none}.map{min-height:680px}.two{grid-template-columns:1fr}.hero-card{top:96px}.map-stats{grid-template-columns:repeat(2,1fr)}.map-tools{top:82px;left:18px;right:18px;width:auto}.person-card{top:auto;bottom:12px}.roster-card{top:136px}.value{grid-template-columns:1fr}.form-head h1{font-size:25px}
     }
   </style>
 </head>
@@ -184,6 +185,7 @@
         </div>
         <div class="person-note" id="personNote"></div>
         <div class="rec-list" id="personRecs"></div>
+        <div class="person-helper" id="personHelper">Click another person in the list to switch.</div>
       </section>
       <section class="roster-card" id="rosterCard" aria-label="People on this map">
         <h3>People on this map</h3>
@@ -213,7 +215,7 @@
             <input class="input required" id="name" name="startup-name" autocomplete="off" placeholder="Your name" required>
           </div>
           <div>
-            <label for="location">Hometown or place I know</label>
+            <label for="location">Hometown</label>
             <input class="input required" id="location" name="startup-location" autocomplete="off" placeholder="Tel Aviv, New York, or Miami" required>
           </div>
         </div>
@@ -286,6 +288,7 @@
     const personMeta = document.getElementById('personMeta');
     const personNote = document.getElementById('personNote');
     const personRecs = document.getElementById('personRecs');
+    const personHelper = document.getElementById('personHelper');
     const closeDetail = document.getElementById('closeDetail');
     const rosterSummary = document.getElementById('rosterSummary');
     const rosterList = document.getElementById('rosterList');
@@ -294,6 +297,7 @@
     let markers = [];
     let myPinIds = readMyPinIds();
     let savedSuccessfully = false;
+    let selectedFriendId = null;
 
     function esc(text){return String(text || '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
     function initials(name){return String(name||'').trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join('') || '?'}
@@ -336,6 +340,7 @@
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
         attribution:'&copy; OSM &copy; CARTO',subdomains:'abcd',maxZoom:14
       }).addTo(map);
+      map.on('zoomend',()=>renderPins({fit:false}));
     }
     function markerIcon(friend){
       const mine=myPinIds.includes(friend.id)?' mine':'';
@@ -355,6 +360,29 @@
     function visibleFriends(){
       const query=mapSearch.value.trim().toLowerCase();
       return friends.filter(friend=>Number.isFinite(friend.lat)&&Number.isFinite(friend.lng)&&friendMatches(friend,query));
+    }
+    function coordinateKey(friend){
+      return `${Number(friend.lat).toFixed(4)},${Number(friend.lng).toFixed(4)}`;
+    }
+    function spreadSamePlaceMarkers(list){
+      const groups=new Map();
+      list.forEach(friend=>{
+        const key=coordinateKey(friend);
+        if(!groups.has(key))groups.set(key,[]);
+        groups.get(key).push(friend);
+      });
+      return list.map(friend=>{
+        const group=groups.get(coordinateKey(friend)) || [friend];
+        const count=group.length;
+        const index=group.indexOf(friend);
+        if(count<2 || !map)return Object.assign(friend,{_displayLat:friend.lat,_displayLng:friend.lng,_overlapCount:count});
+        const origin=map.latLngToLayerPoint([friend.lat,friend.lng]);
+        const radius=Math.min(38,18 + (count * 3));
+        const angle=(-Math.PI / 2) + ((Math.PI * 2 * index) / count);
+        const point=L.point(origin.x + Math.cos(angle) * radius, origin.y + Math.sin(angle) * radius);
+        const display=map.layerPointToLatLng(point);
+        return Object.assign(friend,{_displayLat:display.lat,_displayLng:display.lng,_overlapCount:count});
+      });
     }
     async function postJson(url,body){
       const response=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -385,21 +413,22 @@
       document.getElementById('statCities').textContent=stats.cities || 0;
       document.getElementById('statRecs').textContent=stats.recommendations || 0;
     }
-    function renderPins(){
+    function renderPins(options={}){
+      const shouldFit=options.fit!==false;
       document.querySelectorAll('.dynamic-pin').forEach(pin=>pin.remove());
       if(!map)return;
       markers.forEach(marker=>map.removeLayer(marker));
       markers=[];
-      const list=visibleFriends();
+      const list=spreadSamePlaceMarkers(visibleFriends());
       list.forEach(friend=>{
-        const marker=L.marker([friend.lat,friend.lng],{icon:markerIcon(friend),title:friend.name}).addTo(map);
+        const marker=L.marker([friend._displayLat,friend._displayLng],{icon:markerIcon(friend),title:friend.name}).addTo(map);
         marker.on('click',()=>{
           if(mapPane.classList.contains('locked')){showToast('Add yourself with one rec to unlock the map.');return}
           showDetail(friend);
         });
         markers.push(marker);
       });
-      fitMap(list);
+      if(shouldFit)fitMap(list);
       renderRoster(list);
     }
     function renderRoster(list=visibleFriends()){
@@ -414,15 +443,16 @@
       rosterList.innerHTML=list.slice(0,8).map(friend=>{
         const rec=(friend.recommendations||[])[0];
         const subtitle=`${placeTypeLabel(friend.pinType)} in ${friend.city}${friend.country?', '+friend.country:''}`;
-        const recText=rec?` · ${rec.name}`:'';
-        return `<button type="button" class="roster-item" data-roster-id="${friend.id}">
+        const recText=rec?` - ${rec.name}`:'';
+        const active=String(friend.id)===String(selectedFriendId)?' active':'';
+        return `<button type="button" class="roster-item${active}" data-roster-id="${friend.id}">
           <span class="roster-avatar" style="background:${friend.color||colorForName(friend.name)}">${esc(initials(friend.name))}</span>
           <span><strong>${esc(friend.name)}</strong><span>${esc(subtitle)}${esc(recText)}</span></span>
         </button>`;
       }).join('');
       rosterList.querySelectorAll('[data-roster-id]').forEach(button=>{
         button.addEventListener('click',()=>{
-          const friend=friends.find(item=>String(item.id)===button.dataset.rosterId);
+          const friend=list.find(item=>String(item.id)===button.dataset.rosterId) || friends.find(item=>String(item.id)===button.dataset.rosterId);
           if(friend)showDetail(friend);
         });
       });
@@ -438,8 +468,15 @@
       personMeta.textContent=`${placeTypeLabel(friend.pinType)} in ${friend.city}${friend.country?', '+friend.country:''}`;
       personNote.textContent=friend.note || 'No public note yet.';
       const recs=friend.recommendations || [];
-      personRecs.innerHTML=recs.length?recs.map(rec=>`<div class="rec"><strong>${esc(rec.name)}</strong><span>${esc(rec.note||'')}</span><em class="chip">${esc(recLabel(rec.category))}</em></div>`).join(''):'';
+      personRecs.innerHTML=recs.length?recs.map(rec=>`<div class="rec"><strong>${esc(rec.name)}</strong>${rec.note?`<span>${esc(rec.note)}</span>`:''}<em class="chip">${esc(recLabel(rec.category))}</em></div>`).join(''):'';
+      selectedFriendId=friend.id;
+      const others=Math.max(0,(friend._overlapCount||1)-1);
+      personHelper.textContent=others
+        ? `${others} other ${others===1?'person shares':'people share'} this city. Use the list above or nearby pins to switch.`
+        : 'Click another person in the list to switch.';
       personCard.classList.add('show');
+      renderRoster(spreadSamePlaceMarkers(visibleFriends()));
+      if(map && Number.isFinite(friend._displayLat) && Number.isFinite(friend._displayLng))map.panTo([friend._displayLat,friend._displayLng]);
       document.querySelectorAll('.pin').forEach(pin=>pin.classList.remove('active'));
     }
     function unlockMap(){
@@ -528,9 +565,9 @@
       showToast('Keep typing another city, or paste recs below.');
     });
     [nameInput,locationInput,notesInput].forEach(input=>input.addEventListener('input',updateRequiredState));
-    mapSearch.addEventListener('input',renderPins);
-    resetMapBtn.addEventListener('click',()=>{mapSearch.value='';personCard.classList.remove('show');renderPins()});
-    closeDetail.addEventListener('click',()=>personCard.classList.remove('show'));
+    mapSearch.addEventListener('input',()=>renderPins());
+    resetMapBtn.addEventListener('click',()=>{mapSearch.value='';selectedFriendId=null;personCard.classList.remove('show');renderPins()});
+    closeDetail.addEventListener('click',()=>{selectedFriendId=null;personCard.classList.remove('show');renderRoster(spreadSamePlaceMarkers(visibleFriends()))});
     initMap();
     if(DEMO_MODE)mapPane.classList.add('demo');
     updateRequiredState();
