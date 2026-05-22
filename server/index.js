@@ -12,6 +12,7 @@ const fs = require('fs');
 const db = require('./db');
 const atlasRoutes = require('./routes/atlas');
 const jtermRoutes = require('./routes/jterm');
+const startupNationRoutes = require('./routes/startupnation');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -89,6 +90,7 @@ app.use(express.static(path.join(__dirname, '../public'), {
 }));
 
 app.use('/api/jterm', jtermRoutes);
+app.use('/api/startupnation', startupNationRoutes);
 app.use('/api/atlas', atlasRoutes);
 
 // Simple session-based auth endpoints (no WorkOS needed)
@@ -115,7 +117,7 @@ app.get('/api/me', (req, res) => {
 // Read index.html template once at startup for OG tag injection
 const indexHtml = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
 
-// Prototype pages and the polished CBS J-Term entry page.
+// Prototype pages and polished class entry pages.
 app.get(['/test1', '/test1/', '/test2', '/test2/', '/test3', '/test3/'], (req, res) => {
   const page = req.path.split('/').filter(Boolean)[0];
   res.sendFile(path.join(__dirname, `../public/${page}.html`));
@@ -123,6 +125,10 @@ app.get(['/test1', '/test1/', '/test2', '/test2/', '/test3', '/test3/'], (req, r
 
 app.get(['/jterm', '/jterm/', '/cbsj27', '/cbsj27/'], (req, res) => {
   res.sendFile(path.join(__dirname, '../public/jterm.html'));
+});
+
+app.get(['/startupnation', '/startupnation/'], (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/startupnation.html'));
 });
 
 app.get('/join/:code', async (req, res) => {

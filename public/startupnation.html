@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join the Startup Nation Atlas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#f5f8f6;--surface:#fff;--ink:#15211d;--muted:#5c6964;--soft:#8d9994;
+      --line:rgba(21,33,29,.12);--line-strong:rgba(21,33,29,.2);
+      --green:#177a5c;--blue:#2563eb;--coral:#e85d4f;--gold:#c58b18;--purple:#7c3aed;--teal:#0891b2;
+      --shadow:0 18px 44px rgba(21,33,29,.14);
+    }
+    html,body{min-height:100%;font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.4}
+    button,input,textarea{font:inherit}
+    button{cursor:pointer}
+    .shell{min-height:100vh;display:grid;grid-template-columns:minmax(390px,440px) minmax(0,1fr)}
+    .panel{order:-1;background:var(--surface);border-right:1px solid var(--line);min-height:100vh;display:flex;flex-direction:column;box-shadow:8px 0 28px rgba(21,33,29,.08);z-index:2}
+    .form-head{padding:18px 22px 12px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fbfcfb)}
+    .eyebrow{font-size:12px;font-weight:900;color:var(--green);text-transform:uppercase;margin-bottom:6px}
+    .form-head h1{font-size:28px;line-height:1.04;font-weight:900;letter-spacing:0;margin-bottom:8px}
+    .form-head p{color:var(--muted);font-size:14px}
+    .requirement{margin-top:10px;border-radius:8px;background:#f3f8f5;border:1px solid rgba(23,122,92,.16);padding:9px 10px;color:#315d50;font-size:13px}
+    .pill{font-weight:900;color:#0f684f}
+    .form-scroll{overflow:auto;padding:14px 18px 22px;display:grid;gap:10px}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    label{display:block;font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+    label .hint{color:var(--soft);font-weight:800}
+    .input,.textarea{width:100%;border:1px solid var(--line);background:#f8fbf9;color:var(--ink);border-radius:8px;padding:10px 11px}
+    .input.required,.textarea.required{background:#fff;border-color:rgba(23,122,92,.34)}
+    .input:focus,.textarea:focus{outline:2px solid rgba(37,99,235,.16);border-color:var(--blue)}
+    .textarea{min-height:74px;resize:vertical;line-height:1.42}
+    .textarea.short{min-height:72px}
+    .rec-nudge{font-size:12px;color:var(--muted);margin-top:5px}
+    .scope-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .scope{position:relative;border:1px solid var(--line);background:#f8fbf9;border-radius:8px;padding:10px 10px 10px 34px;color:var(--muted);font-size:12px;min-height:76px}
+    .scope input{position:absolute;left:11px;top:13px;accent-color:var(--green)}
+    .scope strong{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
+    .scope:has(input:checked){border-color:rgba(23,122,92,.38);background:#eef7f2}
+    .save-row{display:flex;gap:9px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:10px 13px;font-weight:800;text-decoration:none;white-space:nowrap}
+    .btn.primary{background:var(--green);border-color:var(--green);color:white}
+    .btn.blue{background:var(--blue);border-color:var(--blue);color:white}
+    .btn:active{transform:scale(.98)}
+    .save-row .primary{width:100%;padding:12px 14px;font-size:15px}
+    .save-row .primary:disabled{opacity:.55;cursor:not-allowed}
+    .saved-panel{display:none;border:1px solid rgba(23,122,92,.18);background:#eef7f2;border-radius:8px;padding:10px 11px;color:#315d50;gap:4px}
+    .saved-panel.show{display:grid}
+    .saved-panel strong{color:#0f684f;font-size:14px}
+    .saved-panel span{font-size:13px;color:var(--muted)}
+    .optional-details{border:1px solid var(--line);border-radius:8px;background:#fbfcfb}
+    .optional-details summary{list-style:none;cursor:pointer;padding:11px 12px;font-weight:900;color:var(--ink);display:flex;align-items:center;justify-content:space-between}
+    .optional-details summary::-webkit-details-marker{display:none}
+    .optional-details summary::after{content:"+";font-size:20px;line-height:1;color:var(--green)}
+    .optional-details[open] summary::after{content:"-"}
+    .optional-inner{border-top:1px solid var(--line);padding:12px;display:grid;gap:10px}
+    .checks{display:grid;gap:8px}
+    .check{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);background:#f8fbf9;border-radius:8px;padding:10px;font-size:13px;color:var(--muted);text-transform:none;font-weight:700}
+    .check input{margin-top:2px;accent-color:var(--green)}
+
+    .map{position:relative;min-height:100vh;overflow:hidden;background:#e7f0ec}
+    #realMap{position:absolute;inset:0;z-index:1;opacity:0;pointer-events:none;background:#dfece8;transition:opacity .22s}
+    .map.live #realMap{opacity:1;pointer-events:auto}
+    .leaflet-container{font-family:Inter,system-ui,-apple-system,sans-serif;background:#dfece8}
+    .leaflet-control-attribution{font-size:10px}
+    .leaflet-control-zoom a{color:var(--ink)}
+    .pin-marker{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;color:white;font-weight:900;font-size:12px;box-shadow:0 10px 24px rgba(21,33,29,.28)}
+    .pin-marker.mine{box-shadow:0 0 0 9px rgba(8,145,178,.18),0 12px 28px rgba(21,33,29,.3)}
+    .map svg{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+    .map-grid{position:absolute;inset:0;z-index:1;background-image:linear-gradient(rgba(21,33,29,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(21,33,29,.07) 1px,transparent 1px);background-size:86px 86px;opacity:.38;pointer-events:none}
+    .map.live svg,.map.live .map-grid{display:none}
+    .nav{position:absolute;top:18px;left:18px;z-index:5;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:8px;padding:12px 14px;box-shadow:0 12px 30px rgba(21,33,29,.10)}
+    .brand{font-weight:900}
+    .brand span{display:block;color:var(--muted);font-size:11px;font-weight:800;margin-top:1px;text-transform:uppercase}
+    .map-tools{position:absolute;top:18px;right:18px;z-index:6;display:flex;gap:8px;width:min(390px,calc(100% - 300px))}
+    .map.locked .map-tools{display:none}
+    .map-tools input{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.94);border-radius:8px;padding:11px 12px;box-shadow:0 12px 30px rgba(21,33,29,.08)}
+    .map-tools input:focus{outline:2px solid rgba(37,99,235,.16);border-color:var(--blue)}
+    .hero-card{position:absolute;left:24px;top:96px;z-index:4;width:min(390px,calc(100% - 48px));background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:8px;padding:18px;box-shadow:0 16px 36px rgba(21,33,29,.12)}
+    .map:not(.locked) .hero-card{display:none}
+    .hero-card h2{font-size:30px;line-height:1.08;font-weight:900;letter-spacing:0;margin-bottom:10px}
+    .lead{color:var(--muted);font-size:14px;max-width:34em}
+    .value-grid{display:grid;gap:7px;margin-top:14px}
+    .value{display:grid;grid-template-columns:82px 1fr;gap:9px;border-top:1px solid var(--line);padding-top:7px}
+    .value strong{font-size:12px}
+    .value span{color:var(--muted);font-size:12px}
+    .unlock-card{position:absolute;left:24px;bottom:112px;z-index:4;width:min(350px,calc(100% - 48px));background:rgba(21,33,29,.91);color:white;border-radius:8px;padding:11px 12px;box-shadow:0 16px 36px rgba(21,33,29,.18)}
+    .unlock-card strong{display:block;font-size:13px;margin-bottom:2px}
+    .unlock-card span{display:block;color:rgba(255,255,255,.76);font-size:12px}
+    .pin{position:absolute;z-index:3;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:3px solid white;color:white;font-weight:900;font-size:12px;box-shadow:0 12px 28px rgba(21,33,29,.28);transform:translate(-50%,-50%);transition:transform .15s,box-shadow .15s}
+    .pin:hover,.pin.active{transform:translate(-50%,-50%) scale(1.08);box-shadow:0 0 0 7px rgba(37,99,235,.14),0 14px 30px rgba(21,33,29,.3)}
+    .pin.ghost.sa{left:46%;top:38%;background:var(--coral)}.pin.ghost.jm{left:38%;top:33%;background:var(--blue)}.pin.ghost.mb{left:56%;top:42%;background:var(--green)}.pin.ghost.nk{left:75%;top:47%;background:var(--gold)}.pin.ghost.vr{left:28%;top:47%;background:var(--purple)}
+    .map:not(.locked) .pin.ghost{display:none}
+    .map.locked .pin:not(.you),.map.locked .map-stats{filter:blur(3px);opacity:.28;pointer-events:none}
+    .pin.dynamic{background:var(--teal)}
+    .pin.mine{background:var(--teal);box-shadow:0 0 0 9px rgba(8,145,178,.18),0 12px 28px rgba(21,33,29,.3)}
+    .map-stats{position:absolute;left:24px;right:24px;bottom:22px;z-index:4;display:grid;grid-template-columns:repeat(4,minmax(0,110px));gap:8px;max-width:470px}
+    .metric{background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:8px;padding:9px 10px;box-shadow:0 10px 24px rgba(21,33,29,.08)}
+    .metric strong{display:block;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums}
+    .metric span{display:block;font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:900}
+    .person-card{position:absolute;right:18px;top:82px;z-index:7;width:min(360px,calc(100% - 36px));display:none;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:0 16px 36px rgba(21,33,29,.14)}
+    .person-card.show{display:block}
+    .person-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .person-card h3{font-size:18px;line-height:1.15;margin-bottom:4px}
+    .person-meta{font-size:13px;color:var(--muted)}
+    .person-note{margin-top:11px;border-top:1px solid var(--line);padding-top:10px;color:var(--muted);font-size:13px;white-space:pre-wrap}
+    .rec-list{display:grid;gap:7px;margin-top:10px}
+    .rec{border:1px solid var(--line);border-radius:8px;background:#f8fbf9;padding:8px}
+    .rec strong{display:block;font-size:13px}
+    .rec span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+    .chip{display:inline-flex;border-radius:999px;background:#eef7f2;color:#0f684f;font-size:10px;font-weight:900;text-transform:uppercase;padding:3px 7px;margin-top:7px}
+    .close-detail{border:0;background:transparent;font-size:20px;line-height:1;color:var(--muted);padding:0 4px}
+    .toast{position:fixed;right:18px;bottom:18px;background:#15211d;color:white;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:800;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);transition:.18s;z-index:10}
+    .toast.show{opacity:1;transform:translateY(0)}
+    @media(max-width:980px){
+      .shell{grid-template-columns:1fr}.panel{order:-1;min-height:auto;border-right:0;border-top:1px solid var(--line);box-shadow:none}.map{min-height:620px}.two,.scope-grid{grid-template-columns:1fr}.hero-card{top:96px}.map-stats{grid-template-columns:repeat(2,1fr)}.map-tools{top:82px;left:18px;right:18px;width:auto}.person-card{top:136px}.value{grid-template-columns:1fr}.form-head h1{font-size:25px}
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="map locked" id="mapPane" aria-label="Startup Nation map">
+      <div id="realMap"></div>
+      <svg viewBox="0 0 1200 760" aria-hidden="true">
+        <rect width="1200" height="760" fill="#e7f0ec"/>
+        <g fill="#c7ddd3" stroke="#b7cfc4" stroke-width="2">
+          <path d="M115 235 C205 126 350 158 368 268 C386 378 236 422 130 352 C63 308 68 278 115 235Z"/>
+          <path d="M395 220 C492 135 630 165 690 268 C740 354 660 454 545 438 C428 422 326 315 395 220Z"/>
+          <path d="M718 182 C886 96 1080 172 1128 315 C1174 454 990 550 824 494 C704 454 628 300 718 182Z"/>
+          <path d="M496 494 C604 447 704 532 676 646 C651 736 514 724 466 628 C432 558 438 522 496 494Z"/>
+          <path d="M848 540 C935 505 1048 552 1084 636 C1028 700 910 706 840 636 C804 596 808 558 848 540Z"/>
+        </g>
+      </svg>
+      <div class="map-grid"></div>
+      <nav class="nav"><div class="brand">Startup Nation Atlas <span>powered by Friend Atlas</span></div></nav>
+      <div class="map-tools">
+        <input id="mapSearch" autocomplete="off" placeholder="Search a city, classmate, or rec">
+        <button class="btn" type="button" id="resetMapBtn">Reset</button>
+      </div>
+      <section class="hero-card">
+        <div class="eyebrow">Why join?</div>
+        <h2>Before a trip or startup question, know who to ask.</h2>
+        <p class="lead">Search a city to see classmates who are from there, live there, build there, or know it well, plus the notes they would actually text a friend.</p>
+        <div class="value-grid">
+          <div class="value"><strong>Find people</strong><span>Who is in Tel Aviv, NYC, Miami, or nearby?</span></div>
+          <div class="value"><strong>Read real notes</strong><span>Founders, neighborhoods, coffee spots, warnings, and timing tips.</span></div>
+          <div class="value"><strong>Add more later</strong><span>Start with one rec, then improve your places anytime.</span></div>
+        </div>
+      </section>
+      <div class="unlock-card" id="unlockCard">
+        <strong>Add one rec to unlock the live map.</strong>
+        <span>Name, one place, and one real tip keeps the exchange useful for everyone.</span>
+      </div>
+      <button class="pin ghost sa active" data-person="Ari R." data-city="Tel Aviv" data-note="Knows the startup scene, neighborhoods, and where to take first meetings.">AR</button>
+      <button class="pin ghost jm" data-person="Jesse M." data-city="Miami / New York" data-note="Investor coffee spots, work spots, and first-time Miami tips.">JM</button>
+      <button class="pin ghost mb" data-person="Maya B." data-city="Jerusalem" data-note="From nearby. Ask about day trips, history, and where to stay.">MB</button>
+      <button class="pin ghost nk" data-person="Noa K." data-city="New York" data-note="Founder events, neighborhoods, and meeting logistics.">NK</button>
+      <button class="pin ghost vr" data-person="Val R." data-city="Mexico City" data-note="Food, meetings, museums, and where to stay for a first trip.">VR</button>
+      <section class="person-card" id="personCard">
+        <div class="person-top">
+          <div><h3 id="personName">Select a pin</h3><div class="person-meta" id="personMeta">Click a pin to read recs.</div></div>
+          <button class="close-detail" type="button" id="closeDetail" aria-label="Close detail">&times;</button>
+        </div>
+        <div class="person-note" id="personNote"></div>
+        <div class="rec-list" id="personRecs"></div>
+      </section>
+      <div class="map-stats">
+        <div class="metric"><strong id="statPeople">0</strong><span>People</span></div>
+        <div class="metric"><strong id="statPlaces">0</strong><span>Places</span></div>
+        <div class="metric"><strong id="statCities">0</strong><span>Cities</span></div>
+        <div class="metric"><strong id="statRecs">0</strong><span>Recs</span></div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <header class="form-head">
+        <div class="eyebrow">Join the Startup Nation map</div>
+        <h1>Add yourself to see who you know.</h1>
+        <p>Start with your name, one place, and one useful rec from a city or startup market. Contact info can wait.</p>
+        <div class="requirement"><span class="pill">Required: name, one place, and one rec to unlock the map.</span></div>
+      </header>
+      <form class="form-scroll" id="joinForm" autocomplete="off">
+        <div class="two">
+          <div>
+            <label for="name">Name</label>
+            <input class="input required" id="name" name="startup-name" autocomplete="off" placeholder="Your name" required>
+          </div>
+          <div>
+            <label for="location">Hometown or place I know</label>
+            <input class="input required" id="location" name="startup-location" autocomplete="off" placeholder="Tel Aviv, New York, or Miami" required>
+          </div>
+        </div>
+        <div>
+          <label for="notes">One rec for that place</label>
+          <textarea class="textarea required" id="notes" name="startup-notes" autocomplete="off" placeholder="Example: Tel Aviv - stay near Rothschild or Florentin. Ask me before booking meetings around traffic." required></textarea>
+          <div class="rec-nudge">One messy, useful tip is enough. You can add more later.</div>
+        </div>
+        <div class="scope-grid" aria-label="Recommendation sharing">
+          <label class="scope"><input type="radio" name="shareScope" value="everyone" checked><strong>Share with everyone on the map</strong>Classmates can read this rec after they add themselves.</label>
+          <label class="scope"><input type="radio" name="shareScope" value="jesse"><strong>Share only with Jesse</strong>Your pin shows, but this rec stays off the public map.</label>
+        </div>
+        <div class="save-row">
+          <button type="submit" class="btn primary" id="submitBtn" disabled>Add me and show the map</button>
+        </div>
+        <div class="saved-panel" id="savedPanel" role="status" aria-live="polite">
+          <strong>You are on the Startup Nation Atlas.</strong>
+          <span id="savedText">Your pin and rec were saved. The live map is unlocked.</span>
+        </div>
+        <div class="two">
+          <div>
+            <label for="current">Current city <span class="hint">(optional)</span></label>
+            <input class="input" id="current" name="startup-current" autocomplete="off" placeholder="New York, NY">
+          </div>
+          <div>
+            <label for="known">Other places I know <span class="hint">(optional)</span></label>
+            <input class="input" id="known" name="startup-known" autocomplete="off" placeholder="Tel Aviv, Miami, NYC">
+          </div>
+        </div>
+        <div>
+          <label for="otherNotes">Recs for other places I know <span class="hint">(optional)</span></label>
+          <textarea class="textarea short" id="otherNotes" name="startup-other-notes" autocomplete="off" placeholder="Example: Miami - Wynwood for events. New York - Flatiron/Chelsea for investor coffee."></textarea>
+        </div>
+        <details class="optional-details">
+          <summary>Privacy settings</summary>
+          <div class="optional-inner">
+            <div class="checks">
+              <label class="check"><input type="checkbox" checked> Show my profile on the Startup Nation map</label>
+              <label class="check"><input type="checkbox" checked> Let people know they can reach out before a trip</label>
+              <label class="check"><input type="checkbox"> Let classmates request contact info later</label>
+            </div>
+          </div>
+        </details>
+      </form>
+    </aside>
+  </main>
+  <div class="toast" id="toast">Saved. The live map is unlocked.</div>
+
+  <script>
+    const ATLAS_CODE = 'STNATN';
+    const form = document.getElementById('joinForm');
+    const nameInput = document.getElementById('name');
+    const locationInput = document.getElementById('location');
+    const currentInput = document.getElementById('current');
+    const knownInput = document.getElementById('known');
+    const notesInput = document.getElementById('notes');
+    const otherNotesInput = document.getElementById('otherNotes');
+    const submitBtn = document.getElementById('submitBtn');
+    const mapPane = document.getElementById('mapPane');
+    const unlockCard = document.getElementById('unlockCard');
+    const toast = document.getElementById('toast');
+    const savedPanel = document.getElementById('savedPanel');
+    const savedText = document.getElementById('savedText');
+    const mapSearch = document.getElementById('mapSearch');
+    const resetMapBtn = document.getElementById('resetMapBtn');
+    const personCard = document.getElementById('personCard');
+    const personName = document.getElementById('personName');
+    const personMeta = document.getElementById('personMeta');
+    const personNote = document.getElementById('personNote');
+    const personRecs = document.getElementById('personRecs');
+    const closeDetail = document.getElementById('closeDetail');
+    let friends = [];
+    let map = null;
+    let markers = [];
+    let myPinIds = readMyPinIds();
+    let savedSuccessfully = false;
+
+    function esc(text){return String(text || '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+    function initials(name){return String(name||'').trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0].toUpperCase()).join('') || '?'}
+    function colorForName(name){const colors=['#177a5c','#2563eb','#e85d4f','#c58b18','#7c3aed','#0891b2'];let total=0;String(name||'').split('').forEach(char=>total+=char.charCodeAt(0));return colors[total%colors.length]}
+    function placeTypeLabel(type){return {hometown:'From here',current:'Lives here',lived:'Lived here',know:'Knows well'}[type] || 'Place'}
+    function recLabel(category){return {eat:'Eat',drink:'Drink',coffee:'Coffee',do:'Do',stay:'Stay',tip:'Tip'}[category] || 'Tip'}
+    function readMyPinIds(){try{const ids=JSON.parse(localStorage.getItem(`my-pins-${ATLAS_CODE}`)||'[]');return Array.isArray(ids)?ids.map(Number).filter(Boolean):[]}catch{return[]}}
+    function rememberPins(ids){myPinIds=[...new Set(ids.map(Number).filter(Boolean))];localStorage.setItem(`my-pins-${ATLAS_CODE}`,JSON.stringify(myPinIds));localStorage.setItem(`startupnation-unlocked-${ATLAS_CODE}`,'1')}
+    function hasUnlocked(){return myPinIds.length>0 || localStorage.getItem(`startupnation-unlocked-${ATLAS_CODE}`)==='1'}
+    function hasRequiredFields(){return nameInput.value.trim() && locationInput.value.trim() && notesInput.value.trim()}
+    function updateRequiredState(){submitBtn.disabled=savedSuccessfully || !hasRequiredFields()}
+    function showToast(text){toast.textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1900)}
+    function selectedShareScope(){return (document.querySelector('input[name="shareScope"]:checked') || {}).value || 'everyone'}
+    function initMap(){
+      if(map)return;
+      map=L.map('realMap',{zoomControl:true,attributionControl:true,minZoom:2,maxZoom:14,worldCopyJump:true}).setView([20,0],2);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+        attribution:'&copy; OSM &copy; CARTO',subdomains:'abcd',maxZoom:14
+      }).addTo(map);
+    }
+    function markerIcon(friend){
+      const mine=myPinIds.includes(friend.id)?' mine':'';
+      const color=friend.color || colorForName(friend.name);
+      return L.divIcon({
+        className:'',
+        html:`<div class="pin-marker${mine}" style="background:${color}">${esc(initials(friend.name))}</div>`,
+        iconSize:[34,34],
+        iconAnchor:[17,17],
+      });
+    }
+    function friendMatches(friend,query){
+      if(!query)return true;
+      const recs=(friend.recommendations||[]).map(rec=>`${rec.name} ${rec.note||''} ${recLabel(rec.category)}`).join(' ');
+      return [friend.name,friend.city,friend.country||'',friend.note||'',placeTypeLabel(friend.pinType),recs].join(' ').toLowerCase().includes(query);
+    }
+    function visibleFriends(){
+      const query=mapSearch.value.trim().toLowerCase();
+      return friends.filter(friend=>Number.isFinite(friend.lat)&&Number.isFinite(friend.lng)&&friendMatches(friend,query));
+    }
+    async function postJson(url,body){
+      const response=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      let data=null;try{data=await response.json()}catch{}
+      if(!response.ok)throw new Error(data?.error || `Request failed (${response.status})`);
+      return data;
+    }
+    async function loadAtlas(){
+      try{
+        const response=await fetch(`/api/atlas/code/${ATLAS_CODE}`,{credentials:'same-origin',cache:'no-store'});
+        if(response.status===404){friends=[];renderStats();renderPins();return}
+        const data=await response.json();
+        if(!response.ok)throw new Error(data?.error || 'Could not load atlas');
+        friends=(data.friends||[]).map(friend=>({...friend,lat:Number(friend.lat),lng:Number(friend.lng)}));
+        renderStats(data.stats);
+        renderPins();
+      }catch(error){showToast(error.message || 'Could not load the live map yet.')}
+    }
+    function renderStats(stats={}){
+      document.getElementById('statPeople').textContent=stats.totalFriends || 0;
+      document.getElementById('statPlaces').textContent=stats.totalPlaces || friends.length || 0;
+      document.getElementById('statCities').textContent=stats.cities || 0;
+      document.getElementById('statRecs').textContent=stats.recommendations || 0;
+    }
+    function renderPins(){
+      document.querySelectorAll('.dynamic-pin').forEach(pin=>pin.remove());
+      if(!map)return;
+      markers.forEach(marker=>map.removeLayer(marker));
+      markers=[];
+      const list=visibleFriends();
+      list.forEach(friend=>{
+        const marker=L.marker([friend.lat,friend.lng],{icon:markerIcon(friend),title:friend.name}).addTo(map);
+        marker.on('click',()=>{
+          if(mapPane.classList.contains('locked')){showToast('Add yourself with one rec to unlock the map.');return}
+          showDetail(friend);
+        });
+        markers.push(marker);
+      });
+      fitMap(list);
+    }
+    function fitMap(list){
+      if(!map)return;
+      if(!list.length){map.setView([20,0],2);return}
+      if(list.length===1){map.setView([list[0].lat,list[0].lng],4);return}
+      map.fitBounds(L.latLngBounds(list.map(friend=>[friend.lat,friend.lng])),{padding:[70,70],maxZoom:6});
+    }
+    function showDetail(friend){
+      personName.textContent=friend.name;
+      personMeta.textContent=`${placeTypeLabel(friend.pinType)} in ${friend.city}${friend.country?', '+friend.country:''}`;
+      personNote.textContent=friend.note || 'No public note yet.';
+      const recs=friend.recommendations || [];
+      personRecs.innerHTML=recs.length?recs.map(rec=>`<div class="rec"><strong>${esc(rec.name)}</strong><span>${esc(rec.note||'')}</span><em class="chip">${esc(recLabel(rec.category))}</em></div>`).join(''):'';
+      personCard.classList.add('show');
+      document.querySelectorAll('.pin').forEach(pin=>pin.classList.remove('active'));
+    }
+    function unlockMap(){
+      mapPane.classList.remove('locked');
+      mapPane.classList.add('live');
+      unlockCard.style.display='none';
+      localStorage.setItem(`startupnation-unlocked-${ATLAS_CODE}`,'1');
+      setTimeout(()=>{map.invalidateSize();renderPins()},80);
+    }
+    form.addEventListener('submit',async event=>{
+      event.preventDefault();
+      if(!hasRequiredFields()){
+        showToast('Add your name, one place, and one rec first.');
+        if(!nameInput.value.trim())nameInput.focus();else if(!locationInput.value.trim())locationInput.focus();else notesInput.focus();
+        return;
+      }
+      submitBtn.disabled=true;
+      const oldText=submitBtn.textContent;
+      submitBtn.textContent='Adding you...';
+      try{
+        const shareScope=selectedShareScope();
+        const data=await postJson('/api/startupnation/join',{
+          name:nameInput.value.trim(),
+          location:locationInput.value.trim(),
+          current:currentInput.value.trim(),
+          known:knownInput.value.trim(),
+          notes:notesInput.value.trim(),
+          otherNotes:otherNotesInput.value.trim(),
+          shareScope,
+        });
+        const ids=(data.friends||[]).map(friend=>friend.id).filter(Boolean);
+        rememberPins(ids);
+        savedSuccessfully=true;
+        savedPanel.classList.add('show');
+        savedText.textContent=shareScope==='jesse'
+          ? 'Your pin was saved. Your rec was shared only with Jesse and is hidden from the public map.'
+          : 'Your pin and rec were saved. The live map is unlocked.';
+        submitBtn.textContent='Saved - map is live';
+        submitBtn.disabled=true;
+        await loadAtlas();
+        unlockMap();
+        const firstSaved=friends.find(friend=>ids.includes(friend.id));
+        if(firstSaved)showDetail(firstSaved);
+        showToast('Saved. The live map is unlocked.');
+      }catch(error){
+        submitBtn.disabled=false;
+        submitBtn.textContent=oldText;
+        showToast(error.message || 'Could not save yet.');
+      }
+    });
+    document.querySelectorAll('[data-person]').forEach(pin=>{
+      pin.addEventListener('click',()=>{
+        showToast('Add yourself with one rec to unlock the live map.');
+      });
+    });
+    [nameInput,locationInput,notesInput].forEach(input=>input.addEventListener('input',updateRequiredState));
+    mapSearch.addEventListener('input',renderPins);
+    resetMapBtn.addEventListener('click',()=>{mapSearch.value='';personCard.classList.remove('show');renderPins()});
+    closeDetail.addEventListener('click',()=>personCard.classList.remove('show'));
+    initMap();
+    updateRequiredState();
+    loadAtlas().then(()=>{if(hasUnlocked())unlockMap()});
+  </script>
+</body>
+</html>
