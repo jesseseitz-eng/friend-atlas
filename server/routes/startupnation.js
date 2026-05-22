@@ -68,6 +68,11 @@ function cleanNote(value, max = 500) {
   return String(value || '').trim().slice(0, max);
 }
 
+function tipLooksUseful(value) {
+  const words = String(value || '').trim().split(/\s+/).filter(Boolean);
+  return words.length >= 3 && words.join(' ').length >= 16;
+}
+
 async function ensureStartupNationAtlas() {
   const existing = await db.getAtlasByCode(STARTUP_NATION_CODE);
   if (existing) return existing;
@@ -196,7 +201,12 @@ router.post('/join',
   body('location').isString().trim().isLength({ min: 1, max: 255 }).withMessage('One location is required'),
   body('current').optional({ values: 'falsy' }).isString().trim().isLength({ max: 255 }).withMessage('Current city is too long'),
   body('known').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }).withMessage('Other places is too long'),
-  body('notes').isString().trim().isLength({ min: 1, max: 1200 }).withMessage('Add one rec to unlock the map'),
+  body('notes')
+    .isString()
+    .trim()
+    .isLength({ max: 1200 })
+    .custom(tipLooksUseful)
+    .withMessage('Add a useful tip, not just a place name. Example: "Berenjak for dinner."'),
   body('otherNotes').optional({ values: 'falsy' }).isString().trim().isLength({ max: 1200 }).withMessage('Other recs are too long'),
   body('shareScope').optional({ values: 'falsy' }).isString().trim().isLength({ max: 50 }).withMessage('Invalid sharing choice'),
   validate,

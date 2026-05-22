@@ -37,6 +37,7 @@
     .textarea{min-height:74px;resize:vertical;line-height:1.42}
     .textarea.short{min-height:72px}
     .rec-nudge{font-size:12px;color:var(--muted);margin-top:5px}
+    .rec-nudge.warn{color:#9a3412;font-weight:800}
     kbd{display:inline-flex;align-items:center;border:1px solid var(--line-strong);background:#fff;border-radius:6px;padding:1px 5px;font-size:11px;font-weight:900;color:var(--ink);box-shadow:0 1px 0 rgba(21,33,29,.12)}
     .save-row{display:flex;gap:9px}
     .btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:10px 13px;font-weight:800;text-decoration:none;white-space:nowrap}
@@ -165,12 +166,12 @@
         <div class="value-grid">
           <div class="value"><strong>Find people</strong><span>Who is in Tel Aviv, NYC, Miami, or nearby?</span></div>
           <div class="value"><strong>Read real notes</strong><span>Founders, neighborhoods, coffee spots, warnings, and timing tips.</span></div>
-          <div class="value"><strong>How it fills</strong><span>Every classmate adds one place and one useful tip; pins appear live.</span></div>
+          <div class="value"><strong>How it fills</strong><span>Every classmate adds a hometown and one useful tip; pins appear live.</span></div>
           <div class="value"><strong>Add more later</strong><span>Start with one rec, then improve your places anytime.</span></div>
         </div>
       </section>
       <div class="unlock-card" id="unlockCard">
-        <strong>Add one rec to unlock the live map.</strong>
+        <strong>Add one useful tip to unlock the live map.</strong>
         <span>There are already classmates on the map. Add yourself to see their names and recs.</span>
       </div>
       <button class="pin ghost sa active" data-person="Ari R." data-city="Tel Aviv" data-note="Knows the startup scene, neighborhoods, and where to take first meetings.">AR</button>
@@ -205,7 +206,7 @@
         <div class="eyebrow">Join the Startup Nation map</div>
         <h1>Add yourself to see who you know.</h1>
         <p>Start with your name, one place, and one useful rec from a city or startup market. Your rec is shared with classmates after they join.</p>
-        <div class="requirement"><span class="pill">Required: name, one place, and one rec to unlock the map.</span> It fills in live as classmates add themselves.</div>
+        <div class="requirement"><span class="pill">Required: name, hometown, and one useful tip to unlock the map.</span> It fills in live as classmates add themselves.</div>
         <div class="privacy-note">City-level only. No live location tracking, no exact addresses, no public feed.</div>
       </header>
       <form class="form-scroll" id="joinForm" autocomplete="off">
@@ -220,9 +221,9 @@
           </div>
         </div>
         <div>
-          <label for="notes">One rec for that place</label>
+          <label for="notes">One useful tip for that place</label>
           <textarea class="textarea required" id="notes" name="startup-notes" autocomplete="off" placeholder="Example: Tel Aviv - stay near Rothschild or Florentin. Great for founder coffee; avoid cross-town meetings in traffic." required></textarea>
-          <div class="rec-nudge">One messy, useful tip is enough. Context helps: founder coffee, solo-safe, work cafe, family-friendly, what to avoid.</div>
+          <div class="rec-nudge" id="tipNudge">One messy, useful tip is enough. Example: "Berenjak for dinner" or "Florentine for casual bars."</div>
         </div>
         <div class="save-row">
           <button type="submit" class="btn primary" id="submitBtn" disabled>Add me and show the map</button>
@@ -273,6 +274,7 @@
     const currentInput = document.getElementById('current');
     const knownInput = document.getElementById('known');
     const notesInput = document.getElementById('notes');
+    const tipNudge = document.getElementById('tipNudge');
     const otherNotesInput = document.getElementById('otherNotes');
     const submitBtn = document.getElementById('submitBtn');
     const optionalSubmitBtn = document.getElementById('optionalSubmitBtn');
@@ -307,7 +309,11 @@
     function readMyPinIds(){try{const ids=JSON.parse(localStorage.getItem(`my-pins-${ATLAS_CODE}`)||'[]');return Array.isArray(ids)?ids.map(Number).filter(Boolean):[]}catch{return[]}}
     function rememberPins(ids){myPinIds=[...new Set(ids.map(Number).filter(Boolean))];localStorage.setItem(`my-pins-${ATLAS_CODE}`,JSON.stringify(myPinIds));localStorage.setItem(`startupnation-unlocked-${ATLAS_CODE}`,'1')}
     function hasUnlocked(){return myPinIds.length>0 || localStorage.getItem(`startupnation-unlocked-${ATLAS_CODE}`)==='1'}
-    function hasRequiredFields(){return nameInput.value.trim() && locationInput.value.trim() && notesInput.value.trim()}
+    function tipLooksUseful(value){
+      const words=String(value||'').trim().split(/\s+/).filter(Boolean);
+      return words.length>=3 && words.join(' ').length>=16;
+    }
+    function hasRequiredFields(){return nameInput.value.trim() && locationInput.value.trim() && tipLooksUseful(notesInput.value)}
     function buildStats(list){return{totalFriends:new Set(list.map(friend=>friend.name)).size,totalPlaces:list.length,cities:new Set(list.map(friend=>`${friend.city}|${friend.country||''}`)).size,recommendations:list.reduce((sum,friend)=>sum+(friend.recommendations||[]).length,0)}}
     function demoGeo(place){
       const value=String(place||'').toLowerCase();
@@ -320,6 +326,12 @@
       const disabled=savedSuccessfully || !hasRequiredFields();
       submitBtn.disabled=disabled;
       optionalSubmitBtn.disabled=disabled;
+      const hasAnyTip=notesInput.value.trim().length>0;
+      const needsMore=hasAnyTip && !tipLooksUseful(notesInput.value);
+      tipNudge.classList.toggle('warn',needsMore);
+      tipNudge.textContent=needsMore
+        ? 'Add a little more context, not just a place name. Example: "Florentine for casual bars."'
+        : 'One messy, useful tip is enough. Example: "Berenjak for dinner" or "Florentine for casual bars."';
     }
     function showToast(text){toast.textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1900)}
     function focusNextOnEnter(input,next){
@@ -489,8 +501,9 @@
     form.addEventListener('submit',async event=>{
       event.preventDefault();
       if(!hasRequiredFields()){
-        showToast('Add your name, one place, and one rec first.');
+        showToast('Add your name, hometown, and a useful tip first.');
         if(!nameInput.value.trim())nameInput.focus();else if(!locationInput.value.trim())locationInput.focus();else notesInput.focus();
+        updateRequiredState();
         return;
       }
       if(DEMO_MODE){
