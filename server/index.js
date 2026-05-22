@@ -131,6 +131,10 @@ app.get(['/startupnation', '/startupnation/'], (req, res) => {
   res.sendFile(path.join(__dirname, '../public/startupnation.html'));
 });
 
+app.get(['/startupnationv2', '/startupnationv2/'], (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/startupnationv2.html'));
+});
+
 app.get('/join/:code', async (req, res) => {
   const code = req.params.code.toUpperCase();
   const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;

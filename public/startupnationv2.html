@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Startup Nation Network</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#f4f1ea;--paper:#fffdfa;--panel:#f9f7f1;--ink:#151817;--muted:#68706b;--soft:#9aa29d;
+      --line:rgba(21,24,23,.12);--line2:rgba(21,24,23,.2);
+      --green:#0f7a5a;--blue:#2557a7;--amber:#c98216;--red:#d84e3f;--teal:#0e8b8d;
+      --shadow:0 20px 54px rgba(21,24,23,.14);
+    }
+    html,body{min-height:100%;font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.4}
+    button,input,textarea{font:inherit}
+    button{cursor:pointer}
+    .app{min-height:100vh;display:grid;grid-template-columns:minmax(360px,430px) 1fr}
+    .sidebar{background:var(--paper);border-right:1px solid var(--line);min-height:100vh;display:flex;flex-direction:column;z-index:4;box-shadow:10px 0 34px rgba(21,24,23,.08)}
+    .side-head{padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+    .kicker{font-size:11px;font-weight:900;color:var(--green);letter-spacing:.02em;text-transform:uppercase;margin-bottom:7px}
+    .side-head h1{font-size:29px;line-height:1.02;letter-spacing:0;font-weight:900;margin-bottom:8px}
+    .side-head p{font-size:14px;color:var(--muted)}
+    .rule{display:grid;grid-template-columns:24px 1fr;gap:9px;margin-top:12px;background:#eef6f1;border:1px solid rgba(15,122,90,.18);border-radius:8px;padding:10px;color:#245f4e;font-size:13px;font-weight:800}
+    .rule span:first-child{width:24px;height:24px;border-radius:50%;background:var(--green);color:white;display:grid;place-items:center;font-size:13px}
+    .form{padding:14px 16px 20px;display:grid;gap:10px;overflow:auto}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    label{display:block;color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase;margin-bottom:5px}
+    label .hint{color:var(--soft)}
+    .input,.textarea{width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 11px;color:var(--ink)}
+    .input:focus,.textarea:focus{outline:2px solid rgba(37,87,167,.16);border-color:var(--blue)}
+    .textarea{min-height:78px;resize:vertical}
+    .textarea.short{min-height:68px}
+    .hint-line{font-size:12px;color:var(--muted);margin-top:5px}
+    .share-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .share{position:relative;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:10px 10px 10px 34px;font-size:12px;color:var(--muted);min-height:76px}
+    .share input{position:absolute;left:11px;top:13px;accent-color:var(--green)}
+    .share strong{display:block;color:var(--ink);font-size:13px;margin-bottom:3px}
+    .share:has(input:checked){background:#eef6f1;border-color:rgba(15,122,90,.38)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:10px 13px;font-weight:850;text-decoration:none}
+    .btn.primary{width:100%;background:var(--green);border-color:var(--green);color:white;padding:13px 14px;font-size:15px}
+    .btn.primary:disabled{opacity:.52;cursor:not-allowed}
+    .saved{display:none;border:1px solid rgba(15,122,90,.18);background:#eef6f1;border-radius:8px;padding:10px 11px;color:#245f4e;font-size:13px}
+    .saved.show{display:block}
+    .optional{border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+    .optional summary{list-style:none;padding:11px 12px;font-weight:900;display:flex;justify-content:space-between}
+    .optional summary::-webkit-details-marker{display:none}
+    .optional summary::after{content:"+";font-size:20px;color:var(--green);line-height:1}
+    .optional[open] summary::after{content:"-"}
+    .optional-body{border-top:1px solid var(--line);padding:12px;display:grid;gap:10px}
+
+    .main{min-width:0;min-height:100vh;display:grid;grid-template-rows:auto 1fr;background:#ebe9df}
+    .topbar{height:68px;background:rgba(255,253,250,.92);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:3}
+    .brand{font-weight:950;font-size:19px}.brand span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;margin-top:1px}
+    .top-actions{display:flex;gap:8px;align-items:center}
+    .top-actions input{width:min(410px,36vw);border:1px solid var(--line);background:#fff;border-radius:8px;padding:11px 12px}
+    .workspace{min-height:0;display:grid;grid-template-columns:1fr 360px}
+    .map-wrap{position:relative;min-height:0;background:#dfe7e3}
+    #map{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .18s}
+    .unlocked #map{opacity:1;pointer-events:auto}
+    .leaflet-container{font-family:Inter,system-ui,-apple-system,sans-serif;background:#dfe7e3}
+    .pin-marker{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;color:white;font-weight:900;font-size:12px;box-shadow:0 10px 24px rgba(21,24,23,.28)}
+    .pin-marker.mine{box-shadow:0 0 0 8px rgba(15,122,90,.16),0 10px 24px rgba(21,24,23,.28)}
+    .preview{position:absolute;inset:0;overflow:hidden;background:#e6eee9}
+    .unlocked .preview{display:none}
+    .preview-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(21,24,23,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(21,24,23,.06) 1px,transparent 1px);background-size:82px 82px}
+    .blob{position:absolute;border-radius:50%;background:#bfd8cc;border:2px solid #aecbbf;opacity:.78}
+    .blob.one{width:34%;height:30%;left:8%;top:38%;transform:rotate(8deg)}.blob.two{width:36%;height:32%;left:36%;top:33%;transform:rotate(12deg)}.blob.three{width:39%;height:34%;right:4%;top:28%;transform:rotate(5deg)}.blob.four{width:22%;height:23%;left:43%;bottom:7%;transform:rotate(14deg)}
+    .preview-card{position:absolute;left:24px;top:26px;width:min(430px,calc(100% - 48px));background:rgba(255,253,250,.94);border:1px solid var(--line);border-radius:8px;padding:18px;box-shadow:var(--shadow)}
+    .preview-card h2{font-size:32px;line-height:1.05;font-weight:950;margin-bottom:9px}
+    .preview-card p{color:var(--muted);font-size:14px}
+    .unlock{position:absolute;left:24px;bottom:24px;width:min(360px,calc(100% - 48px));background:rgba(21,24,23,.92);color:white;border-radius:8px;padding:12px 13px;box-shadow:var(--shadow)}
+    .unlock strong{display:block;font-size:13px;margin-bottom:3px}.unlock span{font-size:12px;color:rgba(255,255,255,.78)}
+    .ghost-pin{position:absolute;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:3px solid white;color:white;font-size:12px;font-weight:900;box-shadow:0 10px 24px rgba(21,24,23,.25)}
+    .ghost-pin.a{left:52%;top:45%;background:var(--green)}.ghost-pin.b{left:66%;top:36%;background:var(--amber)}.ghost-pin.c{left:28%;top:52%;background:var(--blue)}.ghost-pin.d{left:75%;top:58%;background:var(--red)}
+    .detail{background:var(--paper);border-left:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+    .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:14px;border-bottom:1px solid var(--line)}
+    .stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:11px;text-align:center}
+    .stat strong{display:block;font-size:24px;font-weight:950}.stat span{display:block;font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:900}
+    .detail-body{padding:14px;overflow:auto}
+    .section-title{font-size:12px;color:var(--muted);text-transform:uppercase;font-weight:950;margin:4px 0 10px}
+    .selected{border:1px solid var(--line);border-radius:8px;background:#fff;padding:13px;margin-bottom:14px}
+    .selected h3{font-size:18px;margin-bottom:3px}.selected .meta{font-size:13px;color:var(--muted)}
+    .note{border-top:1px solid var(--line);margin-top:10px;padding-top:10px;font-size:13px;color:var(--muted);white-space:pre-wrap}
+    .rec-list{display:grid;gap:7px;margin-top:10px}
+    .rec{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:8px}
+    .rec strong{font-size:13px;display:block}.rec span{font-size:12px;color:var(--muted);display:block;margin-top:2px}
+    .chip{display:inline-flex;border-radius:999px;background:#e8f4ee;color:var(--green);font-size:10px;font-weight:950;text-transform:uppercase;padding:3px 7px;margin-top:7px}
+    .list{display:grid;gap:7px}
+    .row{display:grid;grid-template-columns:34px 1fr;gap:9px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:9px;cursor:pointer}
+    .row:hover{border-color:var(--line2)}
+    .avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:white;font-weight:900;font-size:12px}
+    .row strong{font-size:13px}.row span{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+    .toast{position:fixed;right:18px;bottom:18px;background:#151817;color:white;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:850;opacity:0;transform:translateY(10px);transition:.18s;z-index:20;box-shadow:var(--shadow)}
+    .toast.show{opacity:1;transform:translateY(0)}
+    @media(max-width:1080px){.app{grid-template-columns:1fr}.sidebar{min-height:auto}.workspace{grid-template-columns:1fr}.detail{border-left:0;border-top:1px solid var(--line)}.map-wrap{min-height:620px}.top-actions input{width:46vw}}
+    @media(max-width:680px){.two,.share-grid{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start;gap:10px;flex-direction:column;padding:12px}.top-actions,.top-actions input{width:100%}}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="sidebar">
+      <header class="side-head">
+        <div class="kicker">Startup Nation class network</div>
+        <h1>Map the people, markets, and intros in the room.</h1>
+        <p>Add one city or ecosystem you know, plus one useful tip. Then unlock the shared network.</p>
+        <div class="rule"><span>1</span><div>Name + place + one rec unlocks the map.</div></div>
+      </header>
+      <form class="form" id="joinForm" autocomplete="off">
+        <div class="two">
+          <div><label for="name">Name</label><input class="input" id="name" placeholder="Your name" required></div>
+          <div><label for="location">Market or place</label><input class="input" id="location" placeholder="Tel Aviv, NYC, Miami" required></div>
+        </div>
+        <div>
+          <label for="notes">One useful rec</label>
+          <textarea class="textarea" id="notes" placeholder="Example: Tel Aviv - ask me before scheduling investor meetings around traffic. Rothschild is useful for coffee meetings." required></textarea>
+          <div class="hint-line">Founder/event tip, neighborhood, coffee spot, who to ask, what to avoid.</div>
+        </div>
+        <div class="share-grid">
+          <label class="share"><input type="radio" name="shareScope" value="everyone" checked><strong>Map-visible</strong>Classmates see this after they add themselves.</label>
+          <label class="share"><input type="radio" name="shareScope" value="jesse"><strong>Jesse-only</strong>Your pin shows, but the rec stays private.</label>
+        </div>
+        <button class="btn primary" id="submitBtn" type="submit" disabled>Add me and open the network</button>
+        <div class="saved" id="savedPanel"><strong>Saved.</strong> <span id="savedText">The network is unlocked.</span></div>
+        <div class="two">
+          <div><label for="current">Current city <span class="hint">(optional)</span></label><input class="input" id="current" placeholder="New York, NY"></div>
+          <div><label for="known">Other markets <span class="hint">(optional)</span></label><input class="input" id="known" placeholder="Tel Aviv, Boston, Miami"></div>
+        </div>
+        <details class="optional">
+          <summary>More notes</summary>
+          <div class="optional-body">
+            <div><label for="otherNotes">Recs for other markets</label><textarea class="textarea short" id="otherNotes" placeholder="Miami - Wynwood for events. NYC - Flatiron/Chelsea for investor coffee."></textarea></div>
+          </div>
+        </details>
+      </form>
+    </aside>
+    <section class="main" id="main">
+      <header class="topbar">
+        <div class="brand">Startup Nation Network <span>powered by Friend Atlas</span></div>
+        <div class="top-actions"><input id="search" placeholder="Search city, person, market, rec"><button class="btn" id="reset" type="button">Reset</button></div>
+      </header>
+      <div class="workspace">
+        <section class="map-wrap">
+          <div id="map"></div>
+          <div class="preview" id="preview">
+            <div class="preview-grid"></div>
+            <div class="blob one"></div><div class="blob two"></div><div class="blob three"></div><div class="blob four"></div>
+            <div class="ghost-pin a">TA</div><div class="ghost-pin b">NY</div><div class="ghost-pin c">MIA</div><div class="ghost-pin d">SF</div>
+            <article class="preview-card">
+              <div class="kicker">Why this exists</div>
+              <h2>Turn the class into a market map.</h2>
+              <p>Before a trip, diligence call, founder intro, or ecosystem question, search the network and see who knows the place.</p>
+            </article>
+            <div class="unlock"><strong>Network locked until you contribute.</strong><span>Add one real tip so the map has signal, not just dots.</span></div>
+          </div>
+        </section>
+        <aside class="detail">
+          <div class="stats">
+            <div class="stat"><strong id="statPeople">0</strong><span>People</span></div>
+            <div class="stat"><strong id="statPlaces">0</strong><span>Places</span></div>
+            <div class="stat"><strong id="statCities">0</strong><span>Cities</span></div>
+            <div class="stat"><strong id="statRecs">0</strong><span>Recs</span></div>
+          </div>
+          <div class="detail-body">
+            <div class="section-title">Selected pin</div>
+            <article class="selected" id="selectedCard">
+              <h3>Unlock the network</h3>
+              <div class="meta">Add yourself to browse people and recs.</div>
+              <div class="note">Once unlocked, click any pin or row to see what that person knows.</div>
+              <div class="rec-list" id="recList"></div>
+            </article>
+            <div class="section-title">People and markets</div>
+            <div class="list" id="peopleList"></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <div class="toast" id="toast">Saved.</div>
+  <script>
+    const ATLAS_CODE='STNATN';
+    const form=document.getElementById('joinForm'),nameInput=document.getElementById('name'),locationInput=document.getElementById('location'),notesInput=document.getElementById('notes'),currentInput=document.getElementById('current'),knownInput=document.getElementById('known'),otherNotesInput=document.getElementById('otherNotes'),submitBtn=document.getElementById('submitBtn'),savedPanel=document.getElementById('savedPanel'),savedText=document.getElementById('savedText'),main=document.getElementById('main'),search=document.getElementById('search'),toast=document.getElementById('toast'),peopleList=document.getElementById('peopleList'),selectedCard=document.getElementById('selectedCard'),recList=document.getElementById('recList');
+    let map=null,markers=[],friends=[],myPinIds=readMyPinIds(),saved=false;
+    function esc(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+    function initials(n){return String(n||'').trim().split(/\s+/).filter(Boolean).slice(0,2).map(p=>p[0].toUpperCase()).join('')||'?'}
+    function colorForName(n){const colors=['#0f7a5a','#2557a7','#c98216','#d84e3f','#0e8b8d','#7a4fc2'];let t=0;String(n||'').split('').forEach(ch=>t+=ch.charCodeAt(0));return colors[t%colors.length]}
+    function placeTypeLabel(t){return{hometown:'Knows',current:'Lives in',lived:'Lived in',know:'Knows'}[t]||'Knows'}
+    function recLabel(c){return{eat:'Eat',drink:'Drink',coffee:'Coffee',do:'Do',stay:'Stay',tip:'Tip'}[c]||'Tip'}
+    function readMyPinIds(){try{const ids=JSON.parse(localStorage.getItem(`my-pins-${ATLAS_CODE}`)||'[]');return Array.isArray(ids)?ids.map(Number).filter(Boolean):[]}catch{return[]}}
+    function rememberPins(ids){myPinIds=[...new Set(ids.map(Number).filter(Boolean))];localStorage.setItem(`my-pins-${ATLAS_CODE}`,JSON.stringify(myPinIds));localStorage.setItem(`startupnation-unlocked-${ATLAS_CODE}`,'1')}
+    function hasUnlocked(){return myPinIds.length>0||localStorage.getItem(`startupnation-unlocked-${ATLAS_CODE}`)==='1'}
+    function hasRequired(){return nameInput.value.trim()&&locationInput.value.trim()&&notesInput.value.trim()}
+    function shareScope(){return(document.querySelector('input[name="shareScope"]:checked')||{}).value||'everyone'}
+    function showToast(text){toast.textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1800)}
+    function initMap(){if(map)return;map=L.map('map',{zoomControl:true,attributionControl:true,minZoom:2,maxZoom:14,worldCopyJump:true}).setView([20,0],2);L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'&copy; OSM &copy; CARTO',subdomains:'abcd',maxZoom:14}).addTo(map)}
+    function markerIcon(f){const mine=myPinIds.includes(f.id)?' mine':'';return L.divIcon({className:'',html:`<div class="pin-marker${mine}" style="background:${f.color||colorForName(f.name)}">${esc(initials(f.name))}</div>`,iconSize:[34,34],iconAnchor:[17,17]})}
+    function matches(f,q){if(!q)return true;const recs=(f.recommendations||[]).map(r=>`${r.name} ${r.note||''} ${recLabel(r.category)}`).join(' ');return[f.name,f.city,f.country||'',f.note||'',placeTypeLabel(f.pinType),recs].join(' ').toLowerCase().includes(q)}
+    function visible(){const q=search.value.trim().toLowerCase();return friends.filter(f=>Number.isFinite(f.lat)&&Number.isFinite(f.lng)&&matches(f,q))}
+    async function postJson(url,body){const res=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});let data=null;try{data=await res.json()}catch{};if(!res.ok)throw new Error(data?.error||`Request failed (${res.status})`);return data}
+    async function loadAtlas(){try{const res=await fetch(`/api/atlas/code/${ATLAS_CODE}`,{credentials:'same-origin',cache:'no-store'});if(res.status===404){friends=[];renderStats();renderAll();return}const data=await res.json();if(!res.ok)throw new Error(data?.error||'Could not load atlas');friends=(data.friends||[]).map(f=>({...f,lat:Number(f.lat),lng:Number(f.lng)}));renderStats(data.stats);renderAll()}catch(e){showToast(e.message||'Could not load network yet')}}
+    function renderStats(s={}){document.getElementById('statPeople').textContent=s.totalFriends||0;document.getElementById('statPlaces').textContent=s.totalPlaces||friends.length||0;document.getElementById('statCities').textContent=s.cities||0;document.getElementById('statRecs').textContent=s.recommendations||0}
+    function renderAll(){renderMarkers();renderList()}
+    function renderMarkers(){if(!map)return;markers.forEach(m=>map.removeLayer(m));markers=[];const list=visible();list.forEach(f=>{const marker=L.marker([f.lat,f.lng],{icon:markerIcon(f),title:f.name}).addTo(map);marker.on('click',()=>selectFriend(f));markers.push(marker)});fit(list)}
+    function fit(list){if(!map)return;if(!list.length){map.setView([20,0],2);return}if(list.length===1){map.setView([list[0].lat,list[0].lng],4);return}map.fitBounds(L.latLngBounds(list.map(f=>[f.lat,f.lng])),{padding:[70,70],maxZoom:6})}
+    function renderList(){const list=visible();peopleList.innerHTML=list.length?list.map(f=>`<button class="row" data-id="${f.id}"><span class="avatar" style="background:${f.color||colorForName(f.name)}">${esc(initials(f.name))}</span><span><strong>${esc(f.name)}</strong><span>${esc(placeTypeLabel(f.pinType))} ${esc(f.city)}${f.country?', '+esc(f.country):''}</span></span></button>`).join(''):'<div class="note">No matching people yet.</div>';peopleList.querySelectorAll('[data-id]').forEach(btn=>btn.addEventListener('click',()=>{const f=friends.find(item=>String(item.id)===btn.dataset.id);if(f)selectFriend(f)}))}
+    function selectFriend(f){selectedCard.querySelector('h3').textContent=f.name;selectedCard.querySelector('.meta').textContent=`${placeTypeLabel(f.pinType)} ${f.city}${f.country?', '+f.country:''}`;selectedCard.querySelector('.note').textContent=f.note||'No public note yet.';const recs=f.recommendations||[];recList.innerHTML=recs.map(r=>`<div class="rec"><strong>${esc(r.name)}</strong><span>${esc(r.note||'')}</span><em class="chip">${esc(recLabel(r.category))}</em></div>`).join('')}
+    function unlock(){main.classList.add('unlocked');localStorage.setItem(`startupnation-unlocked-${ATLAS_CODE}`,'1');setTimeout(()=>{map.invalidateSize();renderAll()},80)}
+    form.addEventListener('submit',async e=>{e.preventDefault();if(!hasRequired()){showToast('Add name, place, and one rec first.');return}submitBtn.disabled=true;const old=submitBtn.textContent;submitBtn.textContent='Adding you...';try{const scope=shareScope();const data=await postJson('/api/startupnation/join',{name:nameInput.value.trim(),location:locationInput.value.trim(),current:currentInput.value.trim(),known:knownInput.value.trim(),notes:notesInput.value.trim(),otherNotes:otherNotesInput.value.trim(),shareScope:scope});const ids=(data.friends||[]).map(f=>f.id).filter(Boolean);rememberPins(ids);saved=true;savedPanel.classList.add('show');savedText.textContent=scope==='jesse'?'Your pin is visible. Your rec is shared only with Jesse.':'Your pin and rec are visible to the network.';submitBtn.textContent='Saved - network open';await loadAtlas();unlock();const first=friends.find(f=>ids.includes(f.id));if(first)selectFriend(first);showToast('Saved. Network unlocked.')}catch(err){submitBtn.disabled=false;submitBtn.textContent=old;showToast(err.message||'Could not save yet.')}})
+    ;[nameInput,locationInput,notesInput].forEach(i=>i.addEventListener('input',()=>{submitBtn.disabled=saved||!hasRequired()}));search.addEventListener('input',renderAll);document.getElementById('reset').addEventListener('click',()=>{search.value='';renderAll()});initMap();submitBtn.disabled=!hasRequired();loadAtlas().then(()=>{if(hasUnlocked())unlock()});
+  </script>
+</body>
+</html>
