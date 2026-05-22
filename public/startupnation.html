@@ -26,6 +26,7 @@
     .form-head p{color:var(--muted);font-size:14px}
     .requirement{margin-top:10px;border-radius:8px;background:#f3f8f5;border:1px solid rgba(23,122,92,.16);padding:9px 10px;color:#315d50;font-size:13px}
     .pill{font-weight:900;color:#0f684f}
+    .privacy-note{margin-top:7px;color:var(--muted);font-size:12px}
     .form-scroll{overflow:auto;padding:14px 18px 22px;display:grid;gap:10px}
     .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     label{display:block;font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
@@ -36,6 +37,7 @@
     .textarea{min-height:74px;resize:vertical;line-height:1.42}
     .textarea.short{min-height:72px}
     .rec-nudge{font-size:12px;color:var(--muted);margin-top:5px}
+    kbd{display:inline-flex;align-items:center;border:1px solid var(--line-strong);background:#fff;border-radius:6px;padding:1px 5px;font-size:11px;font-weight:900;color:var(--ink);box-shadow:0 1px 0 rgba(21,33,29,.12)}
     .save-row{display:flex;gap:9px}
     .btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:10px 13px;font-weight:800;text-decoration:none;white-space:nowrap}
     .btn.primary{background:var(--green);border-color:var(--green);color:white}
@@ -48,11 +50,15 @@
     .saved-panel strong{color:#0f684f;font-size:14px}
     .saved-panel span{font-size:13px;color:var(--muted)}
     .optional-details{border:1px solid var(--line);border-radius:8px;background:#fbfcfb}
-    .optional-details summary{list-style:none;cursor:pointer;padding:11px 12px;font-weight:900;color:var(--ink);display:flex;align-items:center;justify-content:space-between}
+    .optional-details summary{list-style:none;cursor:pointer;padding:11px 12px;font-weight:900;color:var(--ink);display:flex;align-items:center;justify-content:space-between;gap:8px}
     .optional-details summary::-webkit-details-marker{display:none}
-    .optional-details summary::after{content:"+";font-size:20px;line-height:1;color:var(--green)}
+    .optional-details summary::after{content:"+";font-size:20px;line-height:1;color:var(--green);margin-left:2px}
     .optional-details[open] summary::after{content:"-"}
+    .summary-title{flex:1;min-width:0}
+    .summary-meta{white-space:nowrap}
     .optional-inner{border-top:1px solid var(--line);padding:12px;display:grid;gap:10px}
+    .optional-copy{border:1px solid rgba(23,122,92,.14);background:#f3f8f5;border-radius:8px;padding:9px 10px;color:#315d50;font-size:12px}
+    .optional-copy strong{color:#0f684f}
     .checks{display:grid;gap:8px}
     .check{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);background:#f8fbf9;border-radius:8px;padding:10px;font-size:13px;color:var(--muted);text-transform:none;font-weight:700}
     .check input{margin-top:2px;accent-color:var(--green)}
@@ -180,6 +186,7 @@
         <h1>Add yourself to see who you know.</h1>
         <p>Start with your name, one place, and one useful rec from a city or startup market. Your rec is shared with classmates after they join.</p>
         <div class="requirement"><span class="pill">Required: name, one place, and one rec to unlock the map.</span> It fills in live as classmates add themselves.</div>
+        <div class="privacy-note">City-level only. No live location tracking, no exact addresses, no public feed.</div>
       </header>
       <form class="form-scroll" id="joinForm" autocomplete="off">
         <div class="two">
@@ -194,8 +201,8 @@
         </div>
         <div>
           <label for="notes">One rec for that place</label>
-          <textarea class="textarea required" id="notes" name="startup-notes" autocomplete="off" placeholder="Example: Tel Aviv - stay near Rothschild or Florentin. Ask me before booking meetings around traffic." required></textarea>
-          <div class="rec-nudge">One messy, useful tip is enough. You can add more later.</div>
+          <textarea class="textarea required" id="notes" name="startup-notes" autocomplete="off" placeholder="Example: Tel Aviv - stay near Rothschild or Florentin. Great for founder coffee; avoid cross-town meetings in traffic." required></textarea>
+          <div class="rec-nudge">One messy, useful tip is enough. Context helps: founder coffee, solo-safe, work cafe, family-friendly, what to avoid.</div>
         </div>
         <div class="save-row">
           <button type="submit" class="btn primary" id="submitBtn" disabled>Add me and show the map</button>
@@ -204,22 +211,23 @@
           <strong>You are on the Startup Nation Atlas.</strong>
           <span id="savedText">Your pin and rec were saved. The live map is unlocked.</span>
         </div>
-        <details class="optional-details">
-          <summary>Add more places now <span class="hint">(optional)</span></summary>
+        <details class="optional-details" id="morePlaces">
+          <summary><span class="summary-title">Add another city or paste more recs</span><span class="hint summary-meta">(optional)</span></summary>
           <div class="optional-inner">
+            <div class="optional-copy"><strong>How to add more:</strong> type cities separated by commas, or press <kbd>Enter</kbd> after each city. Messy notes are fine.</div>
             <div class="two">
               <div>
                 <label for="current">Current city <span class="hint">(optional)</span></label>
                 <input class="input" id="current" name="startup-current" autocomplete="off" placeholder="New York, NY">
               </div>
               <div>
-                <label for="known">Other places I know <span class="hint">(optional)</span></label>
+                <label for="known">More places I can help with <span class="hint">(optional)</span></label>
                 <input class="input" id="known" name="startup-known" autocomplete="off" placeholder="Tel Aviv, Miami, NYC">
               </div>
             </div>
             <div>
-              <label for="otherNotes">Recs for other places I know <span class="hint">(optional)</span></label>
-              <textarea class="textarea short" id="otherNotes" name="startup-other-notes" autocomplete="off" placeholder="Example: Miami - Wynwood for events. New York - Flatiron/Chelsea for investor coffee."></textarea>
+              <label for="otherNotes">Paste recs for those places <span class="hint">(optional)</span></label>
+              <textarea class="textarea short" id="otherNotes" name="startup-other-notes" autocomplete="off" placeholder="Example: Miami - Wynwood for events. New York - Flatiron/Chelsea for investor coffee. London - Shoreditch for startup drinks."></textarea>
             </div>
           </div>
         </details>
@@ -284,6 +292,18 @@
     }
     function updateRequiredState(){submitBtn.disabled=savedSuccessfully || !hasRequiredFields()}
     function showToast(text){toast.textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1900)}
+    function focusNextOnEnter(input,next){
+      input.addEventListener('keydown',event=>{
+        if(event.key!=='Enter')return;
+        event.preventDefault();
+        next.focus();
+      });
+    }
+    function addKnownPlaceSeparator(){
+      const value=knownInput.value.trim();
+      if(!value)return;
+      knownInput.value=/[,;]$/.test(value)?`${value} `:`${value}, `;
+    }
     function initMap(){
       if(map)return;
       map=L.map('realMap',{zoomControl:true,attributionControl:true,minZoom:2,maxZoom:14,worldCopyJump:true}).setView([20,0],2);
@@ -436,6 +456,15 @@
       pin.addEventListener('click',()=>{
         showToast('Add yourself with one rec to unlock the live map.');
       });
+    });
+    focusNextOnEnter(nameInput,locationInput);
+    focusNextOnEnter(locationInput,notesInput);
+    focusNextOnEnter(currentInput,knownInput);
+    knownInput.addEventListener('keydown',event=>{
+      if(event.key!=='Enter')return;
+      event.preventDefault();
+      addKnownPlaceSeparator();
+      showToast('Keep typing another city, or paste recs below.');
     });
     [nameInput,locationInput,notesInput].forEach(input=>input.addEventListener('input',updateRequiredState));
     mapSearch.addEventListener('input',renderPins);
