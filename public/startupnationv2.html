@@ -226,7 +226,7 @@
       if(!hasRequired()){showToast('Add name, place, and one rec first.');return}
       if(DEMO_MODE){
         const geo=demoGeo(locationInput.value.trim());
-        const demoFriend={id:-999,name:nameInput.value.trim(),city:geo.city,country:geo.country,lat:geo.lat,lng:geo.lng,note:notesInput.value.trim(),color:'#2754d8',pinType:'hometown',recommendations:[{category:'tip',name:notesInput.value.trim().slice(0,80),note:notesInput.value.trim()}]};
+        const demoFriend={id:-999,name:nameInput.value.trim(),city:geo.city,country:geo.country,lat:geo.lat,lng:geo.lng,note:notesInput.value.trim(),color:'#2754d8',pinType:'hometown',recommendations:[{category:'tip',name:notesInput.value.trim().slice(0,80),note:''}]};
         friends=[demoFriend,...DEMO_FRIENDS];
         myPinIds=[demoFriend.id];
         saved=true;

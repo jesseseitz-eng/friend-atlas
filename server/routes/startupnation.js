@@ -153,7 +153,7 @@ function recommendationsFromNote(text, placeName) {
     const withoutPlacePrefix = line.replace(new RegExp(`^${escapedPlace}\\s*[-:–—]\\s*`, 'i'), '').trim();
     const split = withoutPlacePrefix.match(/^(.{3,80}?)(?:\s[-:–—]\s|\s+-\s+)(.+)$/);
     const name = (split ? split[1] : withoutPlacePrefix).slice(0, 120);
-    const note = (split ? split[2] : withoutPlacePrefix).slice(0, 500);
+    const note = (split ? split[2] : '').slice(0, 500);
     return { category: 'tip', name, note };
   });
 }
