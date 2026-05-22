@@ -35,11 +35,6 @@
     .textarea{min-height:78px;resize:vertical}
     .textarea.short{min-height:68px}
     .hint-line{font-size:12px;color:var(--muted);margin-top:5px}
-    .share-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .share{position:relative;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:10px 10px 10px 34px;font-size:12px;color:var(--muted);min-height:76px}
-    .share input{position:absolute;left:11px;top:13px;accent-color:var(--green)}
-    .share strong{display:block;color:var(--ink);font-size:13px;margin-bottom:3px}
-    .share:has(input:checked){background:#eef6f1;border-color:rgba(15,122,90,.38)}
     .btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:10px 13px;font-weight:850;text-decoration:none}
     .btn.primary{width:100%;background:var(--green);border-color:var(--green);color:white;padding:13px 14px;font-size:15px}
     .btn.primary:disabled{opacity:.52;cursor:not-allowed}
@@ -99,7 +94,7 @@
     .toast{position:fixed;right:18px;bottom:18px;background:#151817;color:white;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:850;opacity:0;transform:translateY(10px);transition:.18s;z-index:20;box-shadow:var(--shadow)}
     .toast.show{opacity:1;transform:translateY(0)}
     @media(max-width:1080px){.app{grid-template-columns:1fr}.sidebar{min-height:auto}.workspace{grid-template-columns:1fr}.detail{border-left:0;border-top:1px solid var(--line)}.map-wrap{min-height:620px}.top-actions input{width:46vw}}
-    @media(max-width:680px){.two,.share-grid{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start;gap:10px;flex-direction:column;padding:12px}.top-actions,.top-actions input{width:100%}}
+    @media(max-width:680px){.two{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start;gap:10px;flex-direction:column;padding:12px}.top-actions,.top-actions input{width:100%}}
   </style>
 </head>
 <body>
@@ -120,10 +115,6 @@
           <label for="notes">One useful rec</label>
           <textarea class="textarea" id="notes" placeholder="Example: Tel Aviv - ask me before scheduling investor meetings around traffic. Rothschild is useful for coffee meetings." required></textarea>
           <div class="hint-line">Founder/event tip, neighborhood, coffee spot, who to ask, what to avoid.</div>
-        </div>
-        <div class="share-grid">
-          <label class="share"><input type="radio" name="shareScope" value="everyone" checked><strong>Class-visible</strong>Classmates see this after they add themselves.</label>
-          <label class="share"><input type="radio" name="shareScope" value="private"><strong>Private note to host</strong>Your pin shows, but the rec stays off the class map.</label>
         </div>
         <button class="btn primary" id="submitBtn" type="submit" disabled>Add me and open the network</button>
         <div class="saved" id="savedPanel"><strong>Saved.</strong> <span id="savedText">The network is unlocked.</span></div>
@@ -206,7 +197,6 @@
     function hasRequired(){return nameInput.value.trim()&&locationInput.value.trim()&&notesInput.value.trim()}
     function buildStats(list){return{totalFriends:new Set(list.map(f=>f.name)).size,totalPlaces:list.length,cities:new Set(list.map(f=>`${f.city}|${f.country||''}`)).size,recommendations:list.reduce((sum,f)=>sum+(f.recommendations||[]).length,0)}}
     function demoGeo(place){const value=String(place||'').toLowerCase();const match=[['tel aviv',{city:'Tel Aviv',country:'Israel',lat:32.0853,lng:34.7818}],['jerusalem',{city:'Jerusalem',country:'Israel',lat:31.7683,lng:35.2137}],['new york',{city:'New York City',country:'USA',lat:40.7128,lng:-74.006}],['nyc',{city:'New York City',country:'USA',lat:40.7128,lng:-74.006}],['miami',{city:'Miami',country:'USA',lat:25.7617,lng:-80.1918}],['dubai',{city:'Dubai',country:'UAE',lat:25.2048,lng:55.2708}],['mexico',{city:'Mexico City',country:'Mexico',lat:19.4326,lng:-99.1332}]].find(([key])=>value.includes(key));return match?match[1]:{city:place.trim()||'Tel Aviv',country:'',lat:32.0853,lng:34.7818}}
-    function shareScope(){return(document.querySelector('input[name="shareScope"]:checked')||{}).value||'everyone'}
     function showToast(text){toast.textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1800)}
     function initMap(){if(map)return;map=L.map('map',{zoomControl:true,attributionControl:true,minZoom:2,maxZoom:14,worldCopyJump:true}).setView([20,0],2);L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'&copy; OSM &copy; CARTO',subdomains:'abcd',maxZoom:14}).addTo(map)}
     function markerIcon(f){const mine=myPinIds.includes(f.id)?' mine':'';return L.divIcon({className:'',html:`<div class="pin-marker${mine}" style="background:${f.color||colorForName(f.name)}">${esc(initials(f.name))}</div>`,iconSize:[34,34],iconAnchor:[17,17]})}
@@ -245,13 +235,12 @@
       const old=submitBtn.textContent;
       submitBtn.textContent='Adding you...';
       try{
-        const scope=shareScope();
-        const data=await postJson('/api/startupnation/join',{name:nameInput.value.trim(),location:locationInput.value.trim(),current:currentInput.value.trim(),known:knownInput.value.trim(),notes:notesInput.value.trim(),otherNotes:otherNotesInput.value.trim(),shareScope:scope});
+        const data=await postJson('/api/startupnation/join',{name:nameInput.value.trim(),location:locationInput.value.trim(),current:currentInput.value.trim(),known:knownInput.value.trim(),notes:notesInput.value.trim(),otherNotes:otherNotesInput.value.trim(),shareScope:'everyone'});
         const ids=(data.friends||[]).map(f=>f.id).filter(Boolean);
         rememberPins(ids);
         saved=true;
         savedPanel.classList.add('show');
-        savedText.textContent=scope==='private'?'Your pin is visible. Your rec was shared privately with the class host.':'Your pin and rec are visible to the network.';
+        savedText.textContent='Your pin and rec are visible to the network.';
         submitBtn.textContent='Saved - network open';
         await loadAtlas();
         unlock();

@@ -36,11 +36,6 @@
     .textarea{min-height:74px;resize:vertical;line-height:1.42}
     .textarea.short{min-height:72px}
     .rec-nudge{font-size:12px;color:var(--muted);margin-top:5px}
-    .scope-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .scope{position:relative;border:1px solid var(--line);background:#f8fbf9;border-radius:8px;padding:10px 10px 10px 34px;color:var(--muted);font-size:12px;min-height:76px}
-    .scope input{position:absolute;left:11px;top:13px;accent-color:var(--green)}
-    .scope strong{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
-    .scope:has(input:checked){border-color:rgba(23,122,92,.38);background:#eef7f2}
     .save-row{display:flex;gap:9px}
     .btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:10px 13px;font-weight:800;text-decoration:none;white-space:nowrap}
     .btn.primary{background:var(--green);border-color:var(--green);color:white}
@@ -119,7 +114,7 @@
     .toast{position:fixed;right:18px;bottom:18px;background:#15211d;color:white;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:800;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);transition:.18s;z-index:10}
     .toast.show{opacity:1;transform:translateY(0)}
     @media(max-width:980px){
-      .shell{grid-template-columns:1fr}.panel{order:-1;min-height:auto;border-right:0;border-top:1px solid var(--line);box-shadow:none}.map{min-height:620px}.two,.scope-grid{grid-template-columns:1fr}.hero-card{top:96px}.map-stats{grid-template-columns:repeat(2,1fr)}.map-tools{top:82px;left:18px;right:18px;width:auto}.person-card{top:136px}.value{grid-template-columns:1fr}.form-head h1{font-size:25px}
+      .shell{grid-template-columns:1fr}.panel{order:-1;min-height:auto;border-right:0;border-top:1px solid var(--line);box-shadow:none}.map{min-height:620px}.two{grid-template-columns:1fr}.hero-card{top:96px}.map-stats{grid-template-columns:repeat(2,1fr)}.map-tools{top:82px;left:18px;right:18px;width:auto}.person-card{top:136px}.value{grid-template-columns:1fr}.form-head h1{font-size:25px}
     }
   </style>
 </head>
@@ -183,7 +178,7 @@
       <header class="form-head">
         <div class="eyebrow">Join the Startup Nation map</div>
         <h1>Add yourself to see who you know.</h1>
-        <p>Start with your name, one place, and one useful rec from a city or startup market. Contact info can wait.</p>
+        <p>Start with your name, one place, and one useful rec from a city or startup market. Your rec is shared with classmates after they join.</p>
         <div class="requirement"><span class="pill">Required: name, one place, and one rec to unlock the map.</span> It fills in live as classmates add themselves.</div>
       </header>
       <form class="form-scroll" id="joinForm" autocomplete="off">
@@ -202,10 +197,6 @@
           <textarea class="textarea required" id="notes" name="startup-notes" autocomplete="off" placeholder="Example: Tel Aviv - stay near Rothschild or Florentin. Ask me before booking meetings around traffic." required></textarea>
           <div class="rec-nudge">One messy, useful tip is enough. You can add more later.</div>
         </div>
-        <div class="scope-grid" aria-label="Recommendation sharing">
-          <label class="scope"><input type="radio" name="shareScope" value="everyone" checked><strong>Class-visible</strong>Classmates can read this rec after they add themselves.</label>
-          <label class="scope"><input type="radio" name="shareScope" value="private"><strong>Private note to host</strong>Your pin shows, but this rec stays off the class map.</label>
-        </div>
         <div class="save-row">
           <button type="submit" class="btn primary" id="submitBtn" disabled>Add me and show the map</button>
         </div>
@@ -213,27 +204,22 @@
           <strong>You are on the Startup Nation Atlas.</strong>
           <span id="savedText">Your pin and rec were saved. The live map is unlocked.</span>
         </div>
-        <div class="two">
-          <div>
-            <label for="current">Current city <span class="hint">(optional)</span></label>
-            <input class="input" id="current" name="startup-current" autocomplete="off" placeholder="New York, NY">
-          </div>
-          <div>
-            <label for="known">Other places I know <span class="hint">(optional)</span></label>
-            <input class="input" id="known" name="startup-known" autocomplete="off" placeholder="Tel Aviv, Miami, NYC">
-          </div>
-        </div>
-        <div>
-          <label for="otherNotes">Recs for other places I know <span class="hint">(optional)</span></label>
-          <textarea class="textarea short" id="otherNotes" name="startup-other-notes" autocomplete="off" placeholder="Example: Miami - Wynwood for events. New York - Flatiron/Chelsea for investor coffee."></textarea>
-        </div>
         <details class="optional-details">
-          <summary>Privacy settings</summary>
+          <summary>Add more places now <span class="hint">(optional)</span></summary>
           <div class="optional-inner">
-            <div class="checks">
-              <label class="check"><input type="checkbox" checked> Show my profile on the Startup Nation map</label>
-              <label class="check"><input type="checkbox" checked> Let people know they can reach out before a trip</label>
-              <label class="check"><input type="checkbox"> Let classmates request contact info later</label>
+            <div class="two">
+              <div>
+                <label for="current">Current city <span class="hint">(optional)</span></label>
+                <input class="input" id="current" name="startup-current" autocomplete="off" placeholder="New York, NY">
+              </div>
+              <div>
+                <label for="known">Other places I know <span class="hint">(optional)</span></label>
+                <input class="input" id="known" name="startup-known" autocomplete="off" placeholder="Tel Aviv, Miami, NYC">
+              </div>
+            </div>
+            <div>
+              <label for="otherNotes">Recs for other places I know <span class="hint">(optional)</span></label>
+              <textarea class="textarea short" id="otherNotes" name="startup-other-notes" autocomplete="off" placeholder="Example: Miami - Wynwood for events. New York - Flatiron/Chelsea for investor coffee."></textarea>
             </div>
           </div>
         </details>
@@ -298,7 +284,6 @@
     }
     function updateRequiredState(){submitBtn.disabled=savedSuccessfully || !hasRequiredFields()}
     function showToast(text){toast.textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1900)}
-    function selectedShareScope(){return (document.querySelector('input[name="shareScope"]:checked') || {}).value || 'everyone'}
     function initMap(){
       if(map)return;
       map=L.map('realMap',{zoomControl:true,attributionControl:true,minZoom:2,maxZoom:14,worldCopyJump:true}).setView([20,0],2);
@@ -420,7 +405,6 @@
       const oldText=submitBtn.textContent;
       submitBtn.textContent='Adding you...';
       try{
-        const shareScope=selectedShareScope();
         const data=await postJson('/api/startupnation/join',{
           name:nameInput.value.trim(),
           location:locationInput.value.trim(),
@@ -428,15 +412,13 @@
           known:knownInput.value.trim(),
           notes:notesInput.value.trim(),
           otherNotes:otherNotesInput.value.trim(),
-          shareScope,
+          shareScope:'everyone',
         });
         const ids=(data.friends||[]).map(friend=>friend.id).filter(Boolean);
         rememberPins(ids);
         savedSuccessfully=true;
         savedPanel.classList.add('show');
-        savedText.textContent=shareScope==='private'
-          ? 'Your pin was saved. Your rec was shared privately with the class host and is hidden from the class map.'
-          : 'Your pin and rec were saved. The live map is unlocked.';
+        savedText.textContent='Your pin and rec were saved. The live map is unlocked.';
         submitBtn.textContent='Saved - map is live';
         submitBtn.disabled=true;
         await loadAtlas();

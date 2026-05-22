@@ -198,7 +198,7 @@ router.post('/join',
   body('known').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }).withMessage('Other places is too long'),
   body('notes').isString().trim().isLength({ min: 1, max: 1200 }).withMessage('Add one rec to unlock the map'),
   body('otherNotes').optional({ values: 'falsy' }).isString().trim().isLength({ max: 1200 }).withMessage('Other recs are too long'),
-  body('shareScope').optional({ values: 'falsy' }).isString().custom(value => ['everyone', 'private', 'host', 'jesse'].includes(value)).withMessage('Invalid sharing choice'),
+  body('shareScope').optional({ values: 'falsy' }).isString().trim().isLength({ max: 50 }).withMessage('Invalid sharing choice'),
   validate,
   async (req, res) => {
     try {
@@ -212,8 +212,7 @@ router.post('/join',
       const knownPlaces = splitPlaces(req.body.known);
       const notes = cleanNote(req.body.notes, 1200);
       const otherNotes = cleanNote(req.body.otherNotes, 1200);
-      const shareScope = ['private', 'host', 'jesse'].includes(req.body.shareScope) ? 'private' : 'everyone';
-      const publishRecs = shareScope === 'everyone';
+      const shareScope = 'everyone';
       const savedPlaces = [];
 
       savedPlaces.push(await savePlace({
@@ -221,23 +220,11 @@ router.post('/join',
         sessionId,
         name,
         place: primaryLocation,
-        note: publishRecs ? notes : 'Rec shared privately with the class host.',
+        note: notes,
         pinType: 'hometown',
         color: '#0891b2',
-        publishRecommendations: publishRecs,
+        publishRecommendations: true,
       }));
-
-      if (!publishRecs) {
-        await db.addJtermPrivateRec({
-          atlasId: atlas.id,
-          friendId: savedPlaces[0]?.id,
-          sessionId,
-          name,
-          place: primaryLocation,
-          notes,
-          otherNotes,
-        });
-      }
 
       const seen = new Set([normalizeLocation(primaryLocation)]);
       if (current && !seen.has(normalizeLocation(current))) {
@@ -263,10 +250,10 @@ router.post('/join',
           sessionId,
           name,
           place,
-          note: publishRecs ? placeNote : (placeNote ? 'Rec shared privately with the class host.' : ''),
+          note: placeNote,
           pinType: 'know',
           color: '#177a5c',
-          publishRecommendations: publishRecs,
+          publishRecommendations: true,
         }));
       }
 
