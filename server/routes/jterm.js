@@ -9,6 +9,8 @@ const JTERM_CODE = (process.env.JTERM_ATLAS_CODE || 'CBSJ27').toUpperCase();
 const OWNER_ID = 'jterm_owner';
 const OWNER_NAME = 'CBS J-Term 2027';
 const MAP_NAME = 'CBS J-Term 2027 Atlas';
+const PIN_TYPES = new Set(['current', 'hometown', 'know']);
+const PIN_COLORS = { current: '#2563eb', hometown: '#e85d4f', know: '#177a5c' };
 
 const FALLBACK_GEO = [
   ['miami', 'Miami', 'USA', 25.7617, -80.1918],
@@ -37,6 +39,14 @@ function validate(req, res, next) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ error: errors.array()[0].msg });
   next();
+}
+
+function adminKeyMatches(value) {
+  const expected = process.env.JTERM_ADMIN_KEY || '';
+  if (!expected || !value) return false;
+  const expectedHash = crypto.createHash('sha256').update(expected).digest();
+  const actualHash = crypto.createHash('sha256').update(String(value)).digest();
+  return crypto.timingSafeEqual(expectedHash, actualHash);
 }
 
 function normalizeLocation(value) {
@@ -76,7 +86,10 @@ async function ensureJtermAtlas() {
   });
 
   try {
-    return await db.createAtlas(JTERM_CODE, OWNER_ID, OWNER_NAME, MAP_NAME);
+    return await db.createAtlas(JTERM_CODE, OWNER_ID, OWNER_NAME, MAP_NAME, {
+      ownerContact: process.env.OWNER_CONTACT || null,
+      connectionGuidance: process.env.JTERM_CONNECTION_GUIDANCE || 'Find them in the J-Term group.',
+    });
   } catch (error) {
     const createdByAnotherRequest = await db.getAtlasByCode(JTERM_CODE);
     if (createdByAnotherRequest) return createdByAnotherRequest;
@@ -182,28 +195,34 @@ async function savePlace({ atlasId, sessionId, name, place, note, pinType, color
     pinType,
   });
 
-  const recs = publishRecommendations ? recommendationsFromNote(note, geo.city) : [];
-  const savedRecommendations = await db.replaceRecsForFriend(friend.id, recs);
+  const savedRecommendations = publishRecommendations
+    ? await db.replaceRecsForFriend(friend.id, recommendationsFromNote(note, geo.city))
+    : await db.getRecsForFriend(friend.id);
   return { ...friend, recommendations: savedRecommendations };
 }
 
 router.post('/join',
   body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('Name is required'),
   body('location').isString().trim().isLength({ min: 1, max: 255 }).withMessage('One location is required'),
+  body('relationship').optional({ values: 'falsy' }).isString().custom(value => PIN_TYPES.has(value)).withMessage('Choose how you know this place'),
   body('current').optional({ values: 'falsy' }).isString().trim().isLength({ max: 255 }).withMessage('Current city is too long'),
   body('known').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }).withMessage('Other places is too long'),
-  body('notes').isString().trim().isLength({ min: 1, max: 1200 }).withMessage('Add one rec to unlock the map'),
+  body('notes').optional({ values: 'falsy' }).isString().trim().isLength({ max: 1200 }).withMessage('Recommendation is too long'),
   body('otherNotes').optional({ values: 'falsy' }).isString().trim().isLength({ max: 1200 }).withMessage('Other recs are too long'),
   body('shareScope').optional({ values: 'falsy' }).isString().trim().isLength({ max: 50 }).withMessage('Invalid sharing choice'),
   validate,
   async (req, res) => {
     try {
       const atlas = await ensureJtermAtlas();
+      if (atlas.contributions_locked) {
+        return res.status(423).json({ error: 'The J-Term atlas is currently closed to new contributions.' });
+      }
       let sessionId = req.cookies?.anon_session;
       if (!sessionId) sessionId = crypto.randomBytes(32).toString('hex');
 
       const name = req.body.name.trim();
       const primaryLocation = req.body.location.trim();
+      const relationship = PIN_TYPES.has(req.body.relationship) ? req.body.relationship : 'hometown';
       const current = String(req.body.current || '').trim();
       const knownPlaces = splitPlaces(req.body.known);
       const notes = cleanNote(req.body.notes, 1200);
@@ -217,9 +236,9 @@ router.post('/join',
         name,
         place: primaryLocation,
         note: notes,
-        pinType: 'hometown',
-        color: '#0891b2',
-        publishRecommendations: true,
+        pinType: relationship,
+        color: PIN_COLORS[relationship],
+        publishRecommendations: !!notes,
       }));
 
       const seen = new Set([normalizeLocation(primaryLocation)]);
@@ -263,6 +282,7 @@ router.post('/join',
       res.json({
         success: true,
         atlas: { id: atlas.id, code: atlas.code, mapName: atlas.map_name || MAP_NAME },
+        friend: { id: savedPlaces[0].id, name: savedPlaces[0].name },
         friends: savedPlaces.map((place) => ({ id: place.id, name: place.name })),
         shareScope,
         redirectUrl: `/join/${atlas.code}`,
@@ -273,5 +293,85 @@ router.post('/join',
     }
   }
 );
+
+router.post('/recommendation',
+  body('friendId').isInt({ min: 1 }).withMessage('Invalid place'),
+  body('category').optional({ values: 'falsy' }).isIn(['eat', 'drink', 'coffee', 'do', 'stay', 'tip']).withMessage('Invalid category'),
+  body('name').isString().trim().isLength({ min: 1, max: 160 }).withMessage('Recommendation is required'),
+  body('note').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }).withMessage('Recommendation note is too long'),
+  validate,
+  async (req, res) => {
+    try {
+      const sessionId = req.cookies?.anon_session;
+      if (!sessionId) return res.status(401).json({ error: 'This browser cannot edit that entry' });
+      const atlas = await ensureJtermAtlas();
+      const friend = await db.getFriendById(req.body.friendId);
+      if (!friend || friend.atlas_id !== atlas.id || friend.session_id !== sessionId) {
+        return res.status(403).json({ error: 'You can only add recommendations to your own entry' });
+      }
+      const recommendation = await db.addRec(friend.id, {
+        category: req.body.category || 'tip',
+        name: req.body.name.trim(),
+        note: cleanNote(req.body.note, 500),
+        url: null,
+      });
+      res.json({ success: true, recommendation });
+    } catch (error) {
+      console.error('J-Term recommendation error:', error);
+      res.status(500).json({ error: 'Failed to save the recommendation' });
+    }
+  }
+);
+
+router.post('/claim-owner',
+  body('key').isString().isLength({ min: 32, max: 256 }).withMessage('Invalid administrator key'),
+  validate,
+  async (req, res) => {
+    try {
+      if (!process.env.JTERM_ADMIN_KEY) {
+        return res.status(503).json({ error: 'J-Term owner recovery is not configured' });
+      }
+      if (!adminKeyMatches(req.body.key)) return res.status(403).json({ error: 'Invalid administrator key' });
+      const atlas = await ensureJtermAtlas();
+      let sessionId = req.cookies?.anon_session;
+      if (!sessionId) sessionId = crypto.randomBytes(32).toString('hex');
+      const ownerId = `anon_${sessionId}`;
+      await db.findOrCreateUser({
+        id: ownerId,
+        email: `${ownerId}@anon.local`,
+        name: 'J-Term organizer',
+        profilePicture: null,
+      });
+      await db.pool.query(
+        `UPDATE atlases SET owner_id = $1, owner_contact = COALESCE(owner_contact, $2), updated_at = NOW()
+         WHERE id = $3`,
+        [ownerId, process.env.OWNER_CONTACT || null, atlas.id]
+      );
+      res.cookie('anon_session', sessionId, {
+        maxAge: 365 * 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      });
+      res.json({ success: true, manageUrl: `/join/${atlas.code}` });
+    } catch (error) {
+      console.error('J-Term owner claim error:', error);
+      res.status(500).json({ error: 'Failed to claim J-Term owner controls' });
+    }
+  }
+);
+
+router.get('/config', async (req, res) => {
+  try {
+    const atlas = await ensureJtermAtlas();
+    res.json({
+      ownerContact: atlas.owner_contact || process.env.OWNER_CONTACT || null,
+      connectionGuidance: atlas.connection_guidance || process.env.JTERM_CONNECTION_GUIDANCE || 'Find them in the J-Term group.',
+      contributionsLocked: !!atlas.contributions_locked,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not load atlas settings' });
+  }
+});
 
 module.exports = router;

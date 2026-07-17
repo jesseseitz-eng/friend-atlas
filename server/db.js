@@ -1,4 +1,12 @@
-const { Pool } = require('pg');
+const useMemoryDb = process.env.USE_IN_MEMORY_DB === 'true';
+let Pool;
+if (useMemoryDb) {
+  const { newDb } = require('pg-mem');
+  const memoryDb = newDb({ autoCreateForeignKeyIndices: true });
+  ({ Pool } = memoryDb.adapters.createPg());
+} else {
+  ({ Pool } = require('pg'));
+}
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -13,6 +21,45 @@ pool.on('error', (err) => console.error('Database pool error:', err));
 async function initialize() {
   const client = await pool.connect();
   try {
+    if (useMemoryDb) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id VARCHAR(255) PRIMARY KEY, email VARCHAR(255) UNIQUE NOT NULL,
+          name VARCHAR(255) NOT NULL, profile_picture VARCHAR(500),
+          created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE TABLE IF NOT EXISTS atlases (
+          id SERIAL PRIMARY KEY, code VARCHAR(6) UNIQUE NOT NULL,
+          owner_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          owner_name VARCHAR(255) NOT NULL, map_name VARCHAR(120),
+          contributions_locked BOOLEAN NOT NULL DEFAULT false,
+          contribution_token_hash VARCHAR(64), owner_contact VARCHAR(255),
+          connection_guidance VARCHAR(255), created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE TABLE IF NOT EXISTS friends (
+          id SERIAL PRIMARY KEY, atlas_id INTEGER NOT NULL REFERENCES atlases(id) ON DELETE CASCADE,
+          user_id VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL, session_id VARCHAR(64),
+          name VARCHAR(100) NOT NULL, city VARCHAR(255) NOT NULL, country VARCHAR(100),
+          lat DOUBLE PRECISION NOT NULL, lng DOUBLE PRECISION NOT NULL, note VARCHAR(500),
+          color VARCHAR(7), referred_by VARCHAR(100), pin_type VARCHAR(20) DEFAULT 'current',
+          added_by_owner BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE TABLE IF NOT EXISTS recommendations (
+          id SERIAL PRIMARY KEY, friend_id INTEGER NOT NULL REFERENCES friends(id) ON DELETE CASCADE,
+          category VARCHAR(30) NOT NULL, name VARCHAR(160) NOT NULL, note VARCHAR(500),
+          url VARCHAR(500), sort_order INTEGER DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE TABLE IF NOT EXISTS jterm_private_recs (
+          id SERIAL PRIMARY KEY, atlas_id INTEGER NOT NULL REFERENCES atlases(id) ON DELETE CASCADE,
+          friend_id INTEGER REFERENCES friends(id) ON DELETE CASCADE, session_id VARCHAR(64),
+          name VARCHAR(100) NOT NULL, place VARCHAR(255) NOT NULL, notes TEXT NOT NULL,
+          other_notes TEXT, created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+      `);
+      return;
+    }
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(255) PRIMARY KEY,
@@ -71,6 +118,16 @@ async function initialize() {
       -- Add map_name column so the atlas itself can have a label distinct from owner_name
       DO $$ BEGIN
         ALTER TABLE atlases ADD COLUMN IF NOT EXISTS map_name VARCHAR(120);
+      EXCEPTION WHEN others THEN NULL;
+      END $$;
+
+      -- Owner moderation and separate contribution-link controls. Existing
+      -- atlases keep working until their owner rotates an invitation.
+      DO $$ BEGIN
+        ALTER TABLE atlases ADD COLUMN IF NOT EXISTS contributions_locked BOOLEAN NOT NULL DEFAULT false;
+        ALTER TABLE atlases ADD COLUMN IF NOT EXISTS contribution_token_hash VARCHAR(64);
+        ALTER TABLE atlases ADD COLUMN IF NOT EXISTS owner_contact VARCHAR(255);
+        ALTER TABLE atlases ADD COLUMN IF NOT EXISTS connection_guidance VARCHAR(255);
       EXCEPTION WHEN others THEN NULL;
       END $$;
 
@@ -133,10 +190,17 @@ async function findOrCreateUser({ id, email, name, profilePicture }) {
   return result.rows[0];
 }
 
-async function createAtlas(code, ownerId, ownerName, mapName) {
+async function createAtlas(code, ownerId, ownerName, mapName, options = {}) {
   const result = await pool.query(
-    'INSERT INTO atlases (code, owner_id, owner_name, map_name) VALUES ($1, $2, $3, $4) RETURNING *',
-    [code.toUpperCase(), ownerId, ownerName, mapName || null]
+    `INSERT INTO atlases
+       (code, owner_id, owner_name, map_name, contribution_token_hash, owner_contact, connection_guidance)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [
+      code.toUpperCase(), ownerId, ownerName, mapName || null,
+      options.contributionTokenHash || null,
+      options.ownerContact || null,
+      options.connectionGuidance || null,
+    ]
   );
   return result.rows[0];
 }
@@ -189,9 +253,71 @@ async function getFriendsByAtlas(atlasId) {
 
 async function removeFriend(friendId, atlasOwnerId) {
   const result = await pool.query(
-    `DELETE FROM friends f USING atlases a
-     WHERE f.id = $1 AND f.atlas_id = a.id AND a.owner_id = $2 RETURNING f.*`,
+    `DELETE FROM friends
+     WHERE id = $1 AND atlas_id IN (SELECT id FROM atlases WHERE owner_id = $2)
+     RETURNING *`,
     [friendId, atlasOwnerId]
+  );
+  return result.rows[0];
+}
+
+async function updateAtlasSettings(atlasId, ownerId, settings) {
+  const result = await pool.query(
+    `UPDATE atlases SET
+       contributions_locked = COALESCE($1, contributions_locked),
+       owner_contact = CASE WHEN $2::boolean THEN $3 ELSE owner_contact END,
+       connection_guidance = CASE WHEN $4::boolean THEN $5 ELSE connection_guidance END,
+       updated_at = NOW()
+     WHERE id = $6 AND owner_id = $7
+     RETURNING *`,
+    [
+      typeof settings.contributionsLocked === 'boolean' ? settings.contributionsLocked : null,
+      Object.prototype.hasOwnProperty.call(settings, 'ownerContact'),
+      settings.ownerContact || null,
+      Object.prototype.hasOwnProperty.call(settings, 'connectionGuidance'),
+      settings.connectionGuidance || null,
+      atlasId,
+      ownerId,
+    ]
+  );
+  return result.rows[0];
+}
+
+async function rotateContributionToken(atlasId, ownerId, tokenHash) {
+  const result = await pool.query(
+    `UPDATE atlases SET contribution_token_hash = $1, updated_at = NOW()
+     WHERE id = $2 AND owner_id = $3 RETURNING *`,
+    [tokenHash, atlasId, ownerId]
+  );
+  return result.rows[0];
+}
+
+async function updateFriendByOwner(friendId, atlasId, ownerId, values) {
+  const result = await pool.query(
+    `UPDATE friends SET
+       name = $1, city = $2, country = $3, lat = $4, lng = $5,
+       note = $6, pin_type = $7, color = $8, updated_at = NOW()
+     WHERE id = $9 AND atlas_id = $10
+       AND EXISTS (SELECT 1 FROM atlases WHERE id = $10 AND owner_id = $11)
+     RETURNING *`,
+    [
+      values.name, values.city, values.country || null, values.lat, values.lng,
+      values.note || null, values.pinType, values.color || null,
+      friendId, atlasId, ownerId,
+    ]
+  );
+  return result.rows[0];
+}
+
+async function removeRecommendationByOwner(recId, atlasId, ownerId) {
+  const result = await pool.query(
+    `DELETE FROM recommendations
+     WHERE id = $1 AND friend_id IN (
+       SELECT f.id FROM friends f JOIN atlases a ON a.id = f.atlas_id
+       WHERE f.atlas_id = $2 AND a.owner_id = $3
+     )
+     RETURNING *`,
+    [recId, atlasId, ownerId]
   );
   return result.rows[0];
 }
@@ -355,6 +481,8 @@ module.exports = {
   pool, initialize, findOrCreateUser, createAtlas, getAtlasByCode,
   getAtlasesByOwner, deleteAtlas, addOrUpdateFriend, getFriendsByAtlas,
   removeFriend, getAtlasStats, exportAtlas, addAnonymousFriend,
+  updateAtlasSettings, rotateContributionToken, updateFriendByOwner,
+  removeRecommendationByOwner,
   addOwnerPin, claimAnonymousFriends, removeFriendBySession,
   getMembershipsByUser, getFriendById,
   getRecsForFriend, addRec, replaceRecsForFriend, deleteRec, addJtermPrivateRec,

@@ -38,7 +38,17 @@ app.use(helmet({
     },
   },
   crossOriginEmbedderPolicy: false,
+  referrerPolicy: { policy: 'no-referrer' },
 }));
+
+// Participant names and locations should never be indexed or cached as social
+// directory pages. This is privacy defense in depth, not access control.
+app.use((req, res, next) => {
+  if (/^\/(join\/|jterm\/?$|cbsj27\/?$)/i.test(req.path)) {
+    res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  }
+  next();
+});
 
 app.use(compression());
 
@@ -114,6 +124,13 @@ app.get('/api/me', (req, res) => {
   res.json({ user: req.session.user || null });
 });
 
+app.get('/api/public-config', (req, res) => {
+  res.json({
+    ownerContact: process.env.OWNER_CONTACT || null,
+    serviceName: 'Friend Atlas',
+  });
+});
+
 // Read index.html template once at startup for OG tag injection
 const indexHtml = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
 
@@ -147,14 +164,10 @@ app.get('/join/:code', async (req, res) => {
       const cityCount = parseInt(stats.cities);
       const countryCount = parseInt(stats.countries);
 
-      // Sanitize for HTML attribute injection
-      const esc = s => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const ownerName = esc(atlas.owner_name);
-
-      const ogTitle = `Join ${ownerName}'s Friend Atlas`;
+      const ogTitle = 'Friend Atlas invitation';
       const ogDesc = friendCount > 0
         ? `${friendCount} friend${friendCount !== 1 ? 's' : ''} across ${cityCount} cit${cityCount !== 1 ? 'ies' : 'y'} in ${countryCount} countr${countryCount !== 1 ? 'ies' : 'y'} — drop your pin!`
-        : `Drop your pin on ${ownerName}'s map!`;
+        : 'Add a city-level place to a shared Friend Atlas.';
       const ogUrl = `${appUrl}/join/${code}`;
       const ogImage = `${appUrl}/api/atlas/code/${code}/og-image`;
 
@@ -200,12 +213,12 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-async function start() {
+async function start(port = PORT) {
   try {
     await db.initialize();
     console.log('✓ Database initialized');
-    app.listen(PORT, () => {
-      console.log(`✓ Friend Atlas running on port ${PORT}`);
+    return app.listen(port, () => {
+      console.log(`✓ Friend Atlas running on port ${port}`);
     });
   } catch (error) {
     console.error('✗ Failed to start server:', error);
@@ -213,4 +226,6 @@ async function start() {
   }
 }
 
-start();
+if (require.main === module) start();
+
+module.exports = { app, start };

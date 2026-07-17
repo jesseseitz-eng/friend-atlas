@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Friend Atlas — Where are your people?</title>
-  <meta name="description" content="Create a private shared map of where your friends live, where they are from, and what they recommend.">
+  <meta name="description" content="Create an unlisted shared map of where your friends live, where they are from, and what they recommend.">
   <meta property="og:title" content="Friend Atlas">
-  <meta property="og:description" content="Create a private shared map of where your friends live, where they are from, and what they recommend.">
+  <meta property="og:description" content="Create an unlisted shared map of where your friends live, where they are from, and what they recommend.">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#eef4f7">
@@ -273,6 +273,15 @@
     /* Confetti */
     .confetti{position:fixed;inset:0;pointer-events:none;z-index:80;overflow:hidden}
     .confetti-piece{position:absolute;width:8px;height:8px;background:var(--accent);animation:confetti-fall 2s ease-in forwards}
+    .owner-only{display:none!important}.owner-only.visible{display:flex!important}
+    .browse-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;margin-bottom:10px;background:var(--surface2);border:1px solid var(--border);border-radius:9px}
+    .browse-tab{border:0;background:transparent;color:var(--text2);border-radius:6px;padding:8px 5px;font-size:11px;font-weight:700;cursor:pointer}
+    .browse-tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(23,32,42,.08)}
+    .rec-browse-card{padding:12px;border-bottom:1px solid var(--border);cursor:pointer}.rec-browse-card:hover{background:var(--surface2)}
+    .rec-browse-card strong{display:block;font-size:14px}.rec-browse-card span{display:block;color:var(--text2);font-size:12px;margin-top:3px}
+    .owner-tools{display:flex;gap:7px;margin-top:11px}.owner-tools .detail-remove{display:block;flex:1}
+    .privacy-footer{margin-top:18px;font-size:12px;color:var(--text2)}.privacy-footer a{color:inherit;font-weight:700}
+    .post-rec-form{display:grid;gap:8px;margin-top:16px;text-align:left}.post-rec-form .input{width:100%}
     @keyframes confetti-fall{0%{transform:translateY(-10vh) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
   </style>
 </head>
@@ -287,12 +296,13 @@
   <main class="welcome-main">
     <div class="hero">
       <h1>Where are your people?</h1>
-      <p class="lead">Create a private shared map of where your friends live, where they are from, and the places they know well. Open the map before a trip and find the people and recs you already trust.</p>
+      <p class="lead">Create an unlisted shared map of where your friends live, where they are from, and the places they know well. Open the map before a trip and find the people and recs you already trust.</p>
       <div class="hero-cta">
         <button class="btn btn-primary btn-lg" id="hero-create">Create My Friend Atlas</button>
         <button class="btn btn-ghost btn-lg" id="hero-join">Join a Map</button>
       </div>
-      <div class="privacy-note">🔒 Private by link. City-level only. No exact addresses.</div>
+      <div class="privacy-note">Unlisted by default. Anyone with a shared link can view city-level entries. Contribution links also allow adding.</div>
+      <div class="privacy-footer"><a href="/privacy.html">Privacy & safety</a> · Never add an exact address or sensitive contact information.</div>
     </div>
     <div class="sample-card">
       <div class="sample-header">
@@ -344,10 +354,14 @@
       <button class="btn btn-icon btn-ghost" id="menu-btn" aria-label="Menu">⋯</button>
     </div>
     <div id="user-menu">
-      <button class="menu-item" id="menu-rename-map">✏️ Rename Map</button>
-      <button class="menu-item" id="menu-rename-owner">👤 Change Your Name</button>
+      <button class="menu-item owner-only" id="menu-rename-map">✏️ Rename Map</button>
+      <button class="menu-item owner-only" id="menu-rename-owner">👤 Change Your Name</button>
+      <button class="menu-item owner-only" id="menu-settings">⚙️ Privacy & Connection</button>
+      <button class="menu-item owner-only" id="menu-lock">🔒 Lock Contributions</button>
+      <button class="menu-item owner-only" id="menu-rotate">🔁 Rotate Contribution Link</button>
       <button class="menu-item" id="menu-switch">🔄 Switch Atlas</button>
-      <button class="menu-item" id="menu-export">📁 Export Data</button>
+      <button class="menu-item owner-only" id="menu-export">📁 Export Data</button>
+      <button class="menu-item owner-only" id="menu-delete" style="color:var(--danger)">🗑️ Delete Atlas</button>
     </div>
   </header>
 
@@ -379,6 +393,12 @@
       <div class="search-box">
         <input id="search" placeholder="Search a city, friend, or rec" autocomplete="off">
       </div>
+      <nav class="browse-tabs" aria-label="Browse atlas">
+        <button class="browse-tab" data-browse="map">Map</button>
+        <button class="browse-tab active" data-browse="people">People</button>
+        <button class="browse-tab" data-browse="cities">Cities</button>
+        <button class="browse-tab" data-browse="recommendations">Recommendations</button>
+      </nav>
       <div id="people-content"></div>
     </aside>
   </div>
@@ -431,15 +451,15 @@
     <p class="modal-desc" id="add-subtitle">Add where you live, where you are from, or somewhere you know well.</p>
     <div class="form-error" id="add-error"></div>
     <div class="form-group">
-      <label class="form-label">Your Name</label>
-      <input type="text" class="input" id="add-name" placeholder="Enter your name">
+      <label class="form-label">Display Name</label>
+      <input type="text" class="input" id="add-name" placeholder="First name + last initial is fine" maxlength="100">
     </div>
     <div class="form-group">
       <label class="form-label">Place Type</label>
       <div class="place-type-grid" id="place-type-picker"></div>
     </div>
     <div class="form-group">
-      <label class="form-label">City</label>
+      <label class="form-label">City and Country</label>
       <div class="city-wrap">
         <input type="text" class="input" id="add-city" placeholder="Start typing a city..." autocomplete="off">
         <div id="city-dropdown"></div>
@@ -450,59 +470,13 @@
       <label class="form-label">Context <span class="opt">(optional)</span></label>
       <input type="text" class="input" id="add-note" placeholder="Grew up here, live here now, studied abroad here..." maxlength="160">
     </div>
-    <div class="form-group">
-      <label class="form-label">Recommendations <span class="opt">(optional)</span></label>
-      <div class="recommendation-list" id="recommendation-list">
-        <div class="rec-item">
-          <select class="input rec-category">
-            <option value="eat">Eat</option>
-            <option value="drink">Drink</option>
-            <option value="coffee">Coffee</option>
-            <option value="do">Do</option>
-            <option value="stay">Stay</option>
-            <option value="tip">Tip</option>
-          </select>
-          <input type="text" class="input rec-name" placeholder="Favorite spot or idea" maxlength="160">
-          <input type="text" class="input rec-note" placeholder="Why / when to go" maxlength="180">
-        </div>
-        <div class="rec-item">
-          <select class="input rec-category">
-            <option value="eat">Eat</option>
-            <option value="drink">Drink</option>
-            <option value="coffee">Coffee</option>
-            <option value="do" selected>Do</option>
-            <option value="stay">Stay</option>
-            <option value="tip">Tip</option>
-          </select>
-          <input type="text" class="input rec-name" placeholder="Another rec" maxlength="160">
-          <input type="text" class="input rec-note" placeholder="Small note" maxlength="180">
-        </div>
-        <div class="rec-item">
-          <select class="input rec-category">
-            <option value="eat">Eat</option>
-            <option value="drink">Drink</option>
-            <option value="coffee">Coffee</option>
-            <option value="do">Do</option>
-            <option value="stay">Stay</option>
-            <option value="tip" selected>Tip</option>
-          </select>
-          <input type="text" class="input rec-name" placeholder="One practical tip" maxlength="160">
-          <input type="text" class="input rec-note" placeholder="Optional detail" maxlength="180">
-        </div>
-      </div>
-      <div class="form-hint">Think restaurants, cafes, walks, bars, museums, neighborhoods, day trips, or practical tips.</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Marker Color</label>
-      <div class="color-picker" id="color-picker"></div>
-    </div>
     <div class="privacy-callout">
       <span class="lock">🔒</span>
-      <span>City-level only. Add more than one place if you know multiple cities. You can remove your own places from this same browser.</span>
+      <span>Your display name, city, context, and later recommendations are visible to anyone with this atlas link. Never add a home address, phone number, private email, or sensitive routine. You can remove this entry from this browser; if you lose access, contact the atlas organizer.</span>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" data-close="add-modal">Cancel</button>
-      <button class="btn btn-primary" id="add-submit">Save Place</button>
+      <button class="btn btn-primary" id="add-submit">Add Me to the Map</button>
     </div>
   </div>
 </div>
@@ -527,7 +501,7 @@
     </div>
     <div class="privacy-callout" style="margin-top:14px">
       <span class="lock">🔒</span>
-      <span>Anyone with the link can join. They can only see city-level places. Each friend can remove their own places anytime.</span>
+      <span>This atlas is unlisted. Anyone with the contribution link can view and add city-level entries. Keep it within the intended group. Contributors can remove entries from the browser that created them.</span>
     </div>
   </div>
 </div>
@@ -566,6 +540,28 @@
   </div>
 </div>
 
+<div class="overlay" id="settings-modal">
+  <div class="modal" style="max-width:460px">
+    <button class="modal-close" data-close="settings-modal">&times;</button>
+    <h2>Privacy & connection</h2>
+    <p class="modal-desc">Give participants a recovery contact and tell them how to connect without publishing phone numbers or email addresses.</p>
+    <div class="form-error" id="settings-error"></div>
+    <div class="form-group">
+      <label class="form-label">Owner Contact <span class="opt">(optional)</span></label>
+      <input type="text" class="input" id="settings-contact" maxlength="255" placeholder="organizer@example.com">
+      <div class="form-hint">Shown in deletion and recovery guidance.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">How should people connect? <span class="opt">(optional)</span></label>
+      <input type="text" class="input" id="settings-connect" maxlength="255" placeholder="Find them in the J-Term group.">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close="settings-modal">Cancel</button>
+      <button class="btn btn-primary" id="settings-submit">Save Settings</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="confirm-modal">
   <div class="modal" style="max-width:340px;text-align:center">
     <p style="font-size:16px;margin-bottom:0">Remove this place from the map?</p>
@@ -580,13 +576,19 @@
 <!-- Post-save celebration -->
 <div id="post-drop">
   <div class="celebrate">
-    <div class="celebrate-emoji">🎉</div>
-    <div class="celebrate-title" id="celebrate-title">You're on the map!</div>
-    <div class="celebrate-desc" id="celebrate-desc">Now send the link to a few friends.</div>
-    <div class="celebrate-actions">
-      <button class="btn btn-primary" id="post-share-btn">Invite Friends</button>
-      <button class="btn btn-ghost" id="post-close-btn">Keep exploring</button>
+    <div class="celebrate-emoji">✓</div>
+    <div class="celebrate-title" id="celebrate-title">You're on the map.</div>
+    <div class="celebrate-desc" id="celebrate-desc">Have a local favorite? Add one optional recommendation now.</div>
+    <div class="post-rec-form" id="post-rec-form">
+      <select class="input" id="post-rec-category"><option value="eat">Eat</option><option value="drink">Drink</option><option value="coffee">Coffee</option><option value="do">Do</option><option value="stay">Stay</option><option value="tip">Practical tip</option></select>
+      <input class="input" id="post-rec-name" maxlength="160" placeholder="Place or tip">
+      <input class="input" id="post-rec-note" maxlength="500" placeholder="Why you recommend it (optional)">
     </div>
+    <div class="celebrate-actions">
+      <button class="btn btn-primary" id="post-rec-submit">Add Recommendation</button>
+      <button class="btn btn-ghost" id="post-close-btn">Maybe later</button>
+    </div>
+    <button class="btn btn-ghost btn-full" id="post-share-btn" style="margin-top:8px">Invite Friends</button>
   </div>
 </div>
 
@@ -622,6 +624,7 @@ const FLAGS={
 function flagFor(country){return FLAGS[country]||'🌍'}
 
 const PIN_COLORS=['#7c3aed','#3b82f6','#06b6d4','#22c55e','#facc15','#f97316','#fb7185','#ec4899'];
+const PIN_TYPE_COLORS={current:'#3b82f6',hometown:'#f97316',lived:'#7c3aed',know:'#22c55e'};
 const AVATAR_BG=['#7c3aed','#3b82f6','#06b6d4','#22c55e','#facc15','#f97316','#fb7185','#ec4899','#a78bfa','#60a5fa'];
 const PLACE_TYPES=[
   {id:'current',title:'Live here',desc:'Where you are now'},
@@ -668,13 +671,13 @@ async function api(path,opts={}){
 // ============ STATE ============
 let atlas=null,friends=[],stats={totalFriends:0,totalPlaces:0,cities:0,countries:0,recommendations:0};
 let map=null,markers=[],referrer=null,myName=null,myPinId=null,myPinIds=[];
-let selectedCity=null,selectedColor=PIN_COLORS[0],selectedPinType='current';
-let searchQuery='';
+let selectedCity=null,selectedColor=PIN_TYPE_COLORS.current,selectedPinType='current';
+let searchQuery='',inviteToken=null,activeBrowseView='people',lastSavedFriendId=null;
 const $=id=>document.getElementById(id);
 
 // ============ UI HELPERS ============
-function showOverlay(id){$(id).classList.add('show')}
-function closeOverlay(id){$(id).classList.remove('show')}
+function showOverlay(id){const overlay=$(id);overlay._returnFocus=document.activeElement;overlay.classList.add('show');overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true')}
+function closeOverlay(id){const overlay=$(id);overlay.classList.remove('show');if(overlay._returnFocus?.focus)overlay._returnFocus.focus()}
 function clearError(id){const e=$(id);if(e){e.classList.remove('show');e.textContent=''}}
 function showError(id,msg){const e=$(id);if(e){e.textContent=msg;e.classList.add('show')}}
 function toast(msg,ms=2400){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -732,11 +735,14 @@ function hideLoading(welcomeBg){
 
 async function boot(){
   const params=new URLSearchParams(location.search);
+  const fragmentParams=new URLSearchParams(location.hash.replace(/^#/,''));
   const pathMatch=location.pathname.match(/^\/join\/([A-Z0-9]{6})$/i);
   const codeFromUrl=pathMatch?pathMatch[1]:params.get('code');
   const codeFromStorage=localStorage.getItem('lastAtlas');
   const code=codeFromUrl||codeFromStorage;
   referrer=params.get('ref')||null;
+  const providedInvite=fragmentParams.get('invite')||params.get('invite');
+  if(code&&providedInvite)sessionStorage.setItem(`invite-token-${code.toUpperCase()}`,providedInvite);
 
   if(code){
     try{
@@ -758,6 +764,7 @@ async function loadAtlas(code){
   const data=await api(`/api/atlas/code/${code}`);
   atlas=data.atlas;
   friends=data.friends;
+  inviteToken=sessionStorage.getItem(`invite-token-${atlas.code}`)||localStorage.getItem(`invite-token-${atlas.code}`)||null;
   stats=normaliseStats(data.stats,friends);
   localStorage.setItem('lastAtlas',atlas.code);
   history.replaceState(null,'',`/join/${atlas.code}`);
@@ -786,12 +793,18 @@ function renderHeader(){
   $('owner-name-display').textContent=atlas.ownerName;
   $('header-code-display').textContent=atlas.code;
   document.title=`${mapName} · Friend Atlas`;
+  document.querySelectorAll('.owner-only').forEach(el=>el.classList.toggle('visible',!!atlas.isOwner));
+  $('menu-lock').textContent=atlas.contributionsLocked?'🔓 Reopen Contributions':'🔒 Lock Contributions';
+  const allowed=!atlas.contributionsLocked&&(!atlas.contributionTokenRequired||!!inviteToken);
+  $('add-btn').disabled=!allowed;
+  $('add-btn').textContent=atlas.contributionsLocked?'Contributions Locked':allowed?'+ Add Your Places':'View Only';
+  $('invite-btn').disabled=atlas.contributionTokenRequired&&!inviteToken;
 }
 
 // ============ MAP ============
 function initMap(){
   if(map){map.remove();map=null}
-  map=L.map('map',{zoomControl:true,attributionControl:true,minZoom:2,maxZoom:14,worldCopyJump:true}).setView([20,0],2);
+  map=L.map('map',{zoomControl:true,attributionControl:true,minZoom:2,maxZoom:14,worldCopyJump:true,scrollWheelZoom:false}).setView([20,0],2);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
     attribution:'&copy; OSM &copy; CARTO',subdomains:'abcd',maxZoom:14
   }).addTo(map);
@@ -858,8 +871,17 @@ function animateNum(id,from,to){
 // ============ PEOPLE PANEL (empty state OR friend list) ============
 function renderPeoplePanel(){
   const c=$('people-content');
+  document.querySelectorAll('.browse-tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.browse===activeBrowseView));
   if(!friends.length){
     c.innerHTML=renderEmptyChecklist(false);
+    return;
+  }
+  if(activeBrowseView==='map'){
+    c.innerHTML=`<div class="empty-checklist"><div class="empty-title">Explore the map</div><div class="empty-sub">Select a marker to see the person, their relationship to the city, and their recommendations.</div><div class="empty-foot">Use the search above to highlight matching people, cities, countries, and recommendations.</div></div>`;
+    return;
+  }
+  if(activeBrowseView==='recommendations'){
+    c.innerHTML=renderRecommendationList();
     return;
   }
   // If only my own places and no one else — show "now invite" state
@@ -868,13 +890,13 @@ function renderPeoplePanel(){
     c.innerHTML=renderEmptyChecklist(true);
     return;
   }
-  c.innerHTML=renderFriendList();
+  c.innerHTML=activeBrowseView==='cities'?renderFriendList():renderPeopleList();
 }
 
 function renderEmptyChecklist(droppedOwn){
   const havePinned=droppedOwn||friends.some(isMyPlace);
   const haveOthers=friends.some(f=>!isMyPlace(f));
-  const inviteLine=`<div class="empty-foot">🔒 Private by link. City-level only.<br>Anyone can remove their own places anytime.</div>`;
+  const inviteLine=`<div class="empty-foot">Unlisted by default. Anyone with the shared link can view city-level entries.<br>Entries can be removed from the browser that created them; otherwise contact the atlas organizer.</div>`;
   if(!havePinned){
     return `
       <div class="empty-checklist">
@@ -908,10 +930,40 @@ function renderEmptyChecklist(droppedOwn){
     </div>`;
 }
 
+function filteredFriends(){
+  const q=searchQuery.trim().toLowerCase();
+  return q?friends.filter(f=>friendMatches(f,q)):friends;
+}
+
+function friendCard(f,showCity=true){
+  const recCount=(f.recommendations||[]).length;
+  const cityName=f.city.replace(/, [^,]+$/,'');
+  return `<div class="friend-card" data-friend-id="${f.id}" onclick="focusFriend(${f.id})">
+    <div class="avatar" style="background:${PIN_TYPE_COLORS[f.pinType]||f.color||colorForName(f.name)}">${escHtml(initialsOf(f.name))}</div>
+    <div style="flex:1;min-width:0">
+      <div class="friend-name">${escHtml(f.name)}${isMyPlace(f)?' <span style="font-size:10px;color:var(--accent2);font-weight:600">YOU</span>':''}</div>
+      <div class="friend-meta">${showCity?`${escHtml(cityName)}${f.country?`, ${escHtml(f.country)}`:''}`:escHtml(f.note||'')}</div>
+      <div class="friend-tags"><span class="place-chip">${escHtml(placeTypeLabel(f.pinType))}</span>${recCount?`<span class="rec-count">${recCount} rec${recCount!==1?'s':''}</span>`:''}</div>
+    </div>
+  </div>`;
+}
+
+function renderPeopleList(){
+  const filtered=filteredFriends().slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if(!filtered.length)return `<div class="empty-foot" style="margin-top:40px">No matches for "${escHtml(searchQuery)}"</div>`;
+  return filtered.map(f=>friendCard(f,true)).join('');
+}
+
+function renderRecommendationList(){
+  const rows=[];
+  filteredFriends().forEach(f=>(f.recommendations||[]).forEach(r=>rows.push({friend:f,rec:r})));
+  if(!rows.length)return `<div class="empty-foot" style="margin-top:40px">No recommendations match yet.</div>`;
+  return rows.map(({friend,rec})=>`<div class="rec-browse-card" onclick="focusFriend(${friend.id})"><strong>${escHtml(rec.name)}</strong><span>${escHtml(recLabel(rec.category))} · ${escHtml(friend.name)} · ${escHtml(friend.city)}</span>${rec.note?`<span>${escHtml(rec.note)}</span>`:''}</div>`).join('');
+}
+
 function renderFriendList(){
   // Apply search filter
-  const q=searchQuery.trim().toLowerCase();
-  const filtered=q?friends.filter(f=>friendMatches(f,q)):friends;
+  const filtered=filteredFriends();
 
   if(!filtered.length){
     return `<div class="empty-foot" style="margin-top:40px">No matches for "${escHtml(searchQuery)}"</div>`;
@@ -979,19 +1031,31 @@ function showDetail(f){
         <span class="detail-rec-name">${escHtml(r.name)}</span>
       </div>
       ${r.note?`<div class="detail-rec-note">${escHtml(r.note)}</div>`:''}
+      ${atlas.isOwner?`<button class="detail-remove owner-rec-remove" data-rec-id="${r.id}" style="display:block;margin-top:6px">Remove recommendation</button>`:''}
     </div>
   `).join('');
   $('detail-recs').style.display=recs.length?'flex':'none';
-  $('detail-meta').textContent=`Joined ${timeAgo(f.createdAt)}`;
-  // Only show remove if it's mine
-  $('detail-remove').style.display=isMyPlace(f)?'block':'none';
+  $('detail-recs').querySelectorAll('.owner-rec-remove').forEach(button=>button.onclick=()=>removeRecommendation(Number(button.dataset.recId)));
+  const connection=atlas.connectionGuidance?` · ${atlas.connectionGuidance.replace('{name}',f.name)}`:'';
+  $('detail-meta').textContent=`Joined ${timeAgo(f.createdAt)}${connection}`;
+  document.querySelectorAll('.detail-correct').forEach(button=>button.remove());
+  if(atlas.isOwner){
+    const correct=document.createElement('button');
+    correct.className='detail-remove detail-correct';
+    correct.style.display='block';
+    correct.style.marginTop='8px';
+    correct.textContent='Correct this entry';
+    correct.onclick=()=>ownerCorrectFriend(f);
+    $('detail-remove').before(correct);
+  }
+  $('detail-remove').style.display=(isMyPlace(f)||atlas.isOwner)?'block':'none';
+  $('detail-remove').textContent=atlas.isOwner&&!isMyPlace(f)?'Remove entry':'Remove this place';
   $('detail-remove').onclick=()=>confirmRemove(f);
   d.classList.add('show');
 }
 function hideDetail(){$('detail').classList.remove('show')}
 
 function confirmRemove(f){
-  $('confirm-name').textContent=f.name;
   showOverlay('confirm-modal');
   $('confirm-yes').onclick=async()=>{
     closeOverlay('confirm-modal');
@@ -1006,6 +1070,26 @@ function confirmRemove(f){
   };
 }
 
+async function removeRecommendation(id){
+  if(!confirm('Remove this recommendation from the atlas?'))return;
+  try{await api(`/api/atlas/code/${atlas.code}/recommendation/${id}`,{method:'DELETE'});hideDetail();await refreshAtlas();toast('Recommendation removed')}
+  catch(e){toast(e.message||'Could not remove recommendation')}
+}
+
+async function ownerCorrectFriend(f){
+  const name=prompt('Correct the display name:',f.name);
+  if(name===null||!name.trim())return;
+  const place=prompt('Correct the city and country:',`${f.city}${f.country?`, ${f.country}`:''}`);
+  if(place===null||!place.trim())return;
+  const match=searchCities(place.split(',')[0].trim())[0];
+  if(!match){toast('Choose a city available in the city search');return}
+  if(!confirm(`Update this entry to ${match.name}, ${match.country}?`))return;
+  try{
+    await api(`/api/atlas/code/${atlas.code}/friend/${f.id}`,{method:'PATCH',body:JSON.stringify({name:name.trim(),city:`${match.name}, ${match.country}`,country:match.country,lat:match.lat,lng:match.lng,note:f.note||null,pinType:f.pinType,color:PIN_TYPE_COLORS[f.pinType]||f.color||null})});
+    hideDetail();await refreshAtlas();toast('Entry corrected');
+  }catch(e){toast(e.message||'Could not update the entry')}
+}
+
 // ============ REFRESH ============
 async function refreshAtlas(){
   const data=await api(`/api/atlas/code/${atlas.code}`);
@@ -1018,17 +1102,17 @@ async function refreshAtlas(){
 
 // ============ ADD PIN FLOW ============
 function openAddModal(){
+  if(atlas.contributionsLocked){toast('This atlas is currently closed to contributions');return}
+  if(atlas.contributionTokenRequired&&!inviteToken){toast('Open the contribution link from the atlas owner to add a place');return}
   $('add-name').value=myName||'';
   $('add-city').value='';
   $('add-note').value='';
-  document.querySelectorAll('#recommendation-list .rec-name,#recommendation-list .rec-note').forEach(input=>input.value='');
   selectedCity=null;
   selectedPinType='current';
   $('city-confirmed').style.display='none';
   $('city-dropdown').classList.remove('show');
-  selectedColor=PIN_COLORS[0];
+  selectedColor=PIN_TYPE_COLORS.current;
   renderPlaceTypePicker();
-  renderColorPicker();
   clearError('add-error');
   showOverlay('add-modal');
   setTimeout(()=>$('add-name').focus(),100);
@@ -1042,16 +1126,7 @@ function renderPlaceTypePicker(){
     </button>
   `).join('');
   $('place-type-picker').querySelectorAll('.place-type-option').forEach(el=>{
-    el.onclick=()=>{selectedPinType=el.dataset.pinType;renderPlaceTypePicker()};
-  });
-}
-
-function renderColorPicker(){
-  $('color-picker').innerHTML=PIN_COLORS.map(c=>
-    `<div class="color-dot ${c===selectedColor?'active':''}" style="background:${c}" data-color="${c}"></div>`
-  ).join('');
-  $('color-picker').querySelectorAll('.color-dot').forEach(el=>{
-    el.onclick=()=>{selectedColor=el.dataset.color;renderColorPicker()};
+    el.onclick=()=>{selectedPinType=el.dataset.pinType;selectedColor=PIN_TYPE_COLORS[selectedPinType];renderPlaceTypePicker()};
   });
 }
 
@@ -1095,14 +1170,6 @@ function selectCity(c){
   if(map)map.flyTo([c.lat,c.lng],4,{duration:.6});
 }
 
-function collectRecommendations(){
-  return [...document.querySelectorAll('#recommendation-list .rec-item')].map(row=>({
-    category:row.querySelector('.rec-category').value,
-    name:row.querySelector('.rec-name').value.trim(),
-    note:row.querySelector('.rec-note').value.trim(),
-  })).filter(r=>r.name);
-}
-
 async function submitPin(){
   clearError('add-error');
   const name=$('add-name').value.trim();
@@ -1119,13 +1186,15 @@ async function submitPin(){
     color:selectedColor,
     referredBy:referrer||null,
     pinType:selectedPinType,
-    recommendations:collectRecommendations(),
+    recommendations:[],
+    inviteToken:inviteToken||null,
   };
   try{
     const d=await api(`/api/atlas/code/${atlas.code}/join-anon`,{method:'POST',body:JSON.stringify(body)});
     closeOverlay('add-modal');
     if(d.friend){
       myPinId=d.friend.id;
+      lastSavedFriendId=d.friend.id;
       myName=d.friend.name;
       saveMyPinIds([...myPinIds,d.friend.id]);
       localStorage.setItem(`my-name-${atlas.code}`,d.friend.name);
@@ -1142,14 +1211,22 @@ async function submitPin(){
 
 // ============ CELEBRATION + CONFETTI + ACTIVITY ============
 function showCelebration(friend){
-  const others=friends.length-1;
   $('celebrate-title').textContent="Saved to the map";
-  $('celebrate-desc').textContent=others>0
-    ? `Your place is in ${atlas.ownerName}'s atlas with ${others} other place${others!==1?'s':''}.`
-    : `Now send the link to a few friends so their places and recs show up too.`;
+  $('celebrate-desc').textContent='Have a local favorite? Add one optional restaurant, activity, neighborhood, or practical tip.';
+  $('post-rec-name').value='';$('post-rec-note').value='';$('post-rec-category').value='eat';
   $('post-drop').classList.add('show');
 }
 function hideCelebration(){$('post-drop').classList.remove('show')}
+
+async function submitPostRecommendation(){
+  const name=$('post-rec-name').value.trim();
+  if(!name){toast('Add a place or tip, or choose Maybe later');return}
+  if(!lastSavedFriendId){toast('Save a place first');return}
+  try{
+    await api(`/api/atlas/code/${atlas.code}/friend/${lastSavedFriendId}/recommendation`,{method:'POST',body:JSON.stringify({category:$('post-rec-category').value,name,note:$('post-rec-note').value.trim()||null})});
+    hideCelebration();await refreshAtlas();toast('Recommendation added');
+  }catch(e){toast(e.message||'Could not add recommendation')}
+}
 
 function showConfetti(){
   const el=$('confetti');el.classList.remove('hidden');
@@ -1180,8 +1257,15 @@ function pushActivity(f){
 }
 
 // ============ SHARE MODAL ============
+function contributionUrl(){
+  const url=new URL(`/join/${atlas.code}`,location.origin);
+  if(myName)url.searchParams.set('ref',myName);
+  if(inviteToken)url.hash=`invite=${encodeURIComponent(inviteToken)}`;
+  return url.toString();
+}
 function openShareModal(){
-  const url=`${location.origin}/join/${atlas.code}`;
+  if(atlas.contributionTokenRequired&&!inviteToken){toast('Rotate the contribution link to create a new invitation');return}
+  const url=contributionUrl();
   $('share-code-display').textContent=atlas.code;
   $('share-url-display').textContent=url;
   const message=buildShareMessage();
@@ -1194,15 +1278,14 @@ function openShareModal(){
 }
 function buildShareMessage(){
   const name=atlas.mapName||`${atlas.ownerName}'s Friend Atlas`;
-  const url=`${location.origin}/join/${atlas.code}?ref=${encodeURIComponent(myName||atlas.ownerName)}`;
-  return `Add your places and local recs to ${name} so we can see where everyone lives, where everyone is from, and who to ask before a trip: ${url}`;
+  return `I made ${name} so we can see where everyone lives, where people are from, and which places people know well. Add your name and a city, plus one optional local favorite: ${contributionUrl()}\n\nPlease use city-level locations only. The atlas is unlisted, but anyone with this link can view and contribute, so keep it within the group.`;
 }
 async function copyText(text,successMsg){
   try{await navigator.clipboard.writeText(text);toast(successMsg||'Copied')}
   catch{toast('Copy failed — long-press to copy manually')}
 }
 async function nativeShare(){
-  const url=`${location.origin}/join/${atlas.code}`;
+  const url=contributionUrl();
   const message=buildShareMessage();
   if(navigator.share){
     try{await navigator.share({title:'Friend Atlas',text:message,url});return}
@@ -1226,6 +1309,10 @@ async function submitCreate(){
     const d=await api('/api/atlas/create',{method:'POST',body:JSON.stringify({name,mapName:mapName||null})});
     if(d.atlas){
       closeOverlay('create-modal');
+      if(d.contributionToken){
+        inviteToken=d.contributionToken;
+        localStorage.setItem(`invite-token-${d.atlas.code}`,d.contributionToken);
+      }
       await loadAtlas(d.atlas.code);
       // Auto-open share modal so they immediately get the link
       setTimeout(()=>openShareModal(),300);
@@ -1274,6 +1361,35 @@ async function submitRenameOwner(){
   }catch(e){showError('rename-owner-error',e.message||'Failed')}
 }
 
+async function submitSettings(){
+  clearError('settings-error');
+  try{
+    const d=await api(`/api/atlas/code/${atlas.code}/settings`,{method:'PATCH',body:JSON.stringify({ownerContact:$('settings-contact').value.trim()||'',connectionGuidance:$('settings-connect').value.trim()||''})});
+    atlas.ownerContact=d.ownerContact||null;atlas.connectionGuidance=d.connectionGuidance||null;
+    closeOverlay('settings-modal');toast('Privacy and connection settings saved');
+  }catch(e){showError('settings-error',e.message||'Could not save settings')}
+}
+
+async function toggleContributions(){
+  const next=!atlas.contributionsLocked;
+  if(!confirm(next?'Lock this atlas so nobody can add new places or recommendations?':'Reopen contributions to people with an active contribution link?'))return;
+  try{const d=await api(`/api/atlas/code/${atlas.code}/settings`,{method:'PATCH',body:JSON.stringify({contributionsLocked:next})});atlas.contributionsLocked=d.contributionsLocked;renderHeader();toast(next?'Contributions locked':'Contributions reopened')}
+  catch(e){toast(e.message||'Could not change contribution access')}
+}
+
+async function rotateInvite(){
+  if(!confirm('Create a new contribution link? Previously rotated contribution links will stop allowing new entries. Existing view links still work.'))return;
+  try{const d=await api(`/api/atlas/code/${atlas.code}/rotate-invite`,{method:'POST'});inviteToken=d.contributionToken;localStorage.setItem(`invite-token-${atlas.code}`,inviteToken);renderHeader();openShareModal();toast('New contribution link created')}
+  catch(e){toast(e.message||'Could not rotate the contribution link')}
+}
+
+async function deleteCurrentAtlas(){
+  const typed=prompt(`This permanently deletes the atlas and its data. Type ${atlas.code} to continue:`);
+  if(typed!==atlas.code){if(typed!==null)toast('Atlas code did not match');return}
+  try{await api(`/api/atlas/code/${atlas.code}`,{method:'DELETE'});localStorage.removeItem('lastAtlas');localStorage.removeItem(`invite-token-${atlas.code}`);location.href='/'}
+  catch(e){toast(e.message||'Could not delete the atlas')}
+}
+
 // ============ EVENT WIRING ============
 function wireEvents(){
   // Welcome CTAs
@@ -1309,6 +1425,15 @@ function wireEvents(){
     $('rename-owner-input').value=atlas.ownerName;
     showOverlay('rename-owner-modal');
   };
+  $('menu-settings').onclick=()=>{
+    $('user-menu').classList.remove('show');
+    $('settings-contact').value=atlas.ownerContact||'';
+    $('settings-connect').value=atlas.connectionGuidance||'';
+    showOverlay('settings-modal');
+  };
+  $('menu-lock').onclick=()=>{$('user-menu').classList.remove('show');toggleContributions()};
+  $('menu-rotate').onclick=()=>{$('user-menu').classList.remove('show');rotateInvite()};
+  $('menu-delete').onclick=()=>{$('user-menu').classList.remove('show');deleteCurrentAtlas()};
   $('menu-switch').onclick=()=>{
     $('user-menu').classList.remove('show');
     localStorage.removeItem('lastAtlas');
@@ -1339,21 +1464,26 @@ function wireEvents(){
       el.style.opacity=matches?'1':'.2';
     });
   });
+  document.querySelectorAll('.browse-tab').forEach(tab=>tab.onclick=()=>{
+    activeBrowseView=tab.dataset.browse;
+    renderPeoplePanel();
+    if(activeBrowseView==='map'&&map)map.invalidateSize();
+  });
 
   // Add modal
   $('add-submit').onclick=submitPin;
   bindCityAutocomplete();
   renderPlaceTypePicker();
-  renderColorPicker();
 
   // Share modal
-  $('copy-link-btn').onclick=()=>copyText(`${location.origin}/join/${atlas.code}`,'Invite link copied');
+  $('copy-link-btn').onclick=()=>copyText(contributionUrl(),'Contribution link copied');
   $('copy-msg-btn').onclick=()=>copyText(buildShareMessage(),'Message copied');
   $('share-native').onclick=e=>{e.preventDefault();nativeShare()};
 
   // Rename modals
   $('rename-map-submit').onclick=submitRenameMap;
   $('rename-owner-submit').onclick=submitRenameOwner;
+  $('settings-submit').onclick=submitSettings;
   $('rename-map-input').addEventListener('keydown',e=>{if(e.key==='Enter')submitRenameMap()});
   $('rename-owner-input').addEventListener('keydown',e=>{if(e.key==='Enter')submitRenameOwner()});
 
@@ -1366,19 +1496,32 @@ function wireEvents(){
   // Post-drop celebration
   $('post-share-btn').onclick=()=>{hideCelebration();openShareModal()};
   $('post-close-btn').onclick=hideCelebration;
+  $('post-rec-submit').onclick=submitPostRecommendation;
 
   // Modal close buttons (data-close attribute)
   document.querySelectorAll('[data-close]').forEach(b=>{
     b.onclick=()=>closeOverlay(b.dataset.close);
   });
+  document.querySelectorAll('.modal-close').forEach(button=>button.setAttribute('aria-label','Close dialog'));
+  $('detail-close').setAttribute('aria-label','Close place details');
 
   // Esc closes top-most overlay
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'){
       const open=document.querySelectorAll('.overlay.show');
-      if(open.length)open[open.length-1].classList.remove('show');
+      if(open.length)closeOverlay(open[open.length-1].id);
       else if($('post-drop').classList.contains('show'))hideCelebration();
       else if($('detail').classList.contains('show'))hideDetail();
+    }
+    if(e.key==='Tab'){
+      const open=document.querySelectorAll('.overlay.show');
+      if(!open.length)return;
+      const dialog=open[open.length-1];
+      const focusable=[...dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href]')].filter(el=>el.offsetParent!==null);
+      if(!focusable.length)return;
+      const first=focusable[0],last=focusable[focusable.length-1];
+      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
     }
   });
 }

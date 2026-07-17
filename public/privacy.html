@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Privacy & Safety — Friend Atlas</title>
+  <style>
+    :root{--ink:#17202a;--muted:#64706b;--paper:#fbf8f2;--card:#fff;--green:#177a5c;--line:#ded8cc}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 Inter,system-ui,-apple-system,sans-serif}
+    main{width:min(760px,calc(100% - 32px));margin:0 auto;padding:56px 0 80px}
+    a{color:var(--green)}.back{font-weight:800;text-decoration:none}.card{margin-top:22px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:clamp(24px,5vw,48px);box-shadow:0 18px 48px rgba(23,32,42,.08)}
+    h1{font-size:clamp(34px,7vw,52px);line-height:1.05;margin:0 0 12px;letter-spacing:-.035em}h2{font-size:20px;margin:30px 0 6px}p,li{color:var(--muted)}strong{color:var(--ink)}.notice{border-left:4px solid var(--green);padding:10px 14px;background:#eef7f2;color:#315d50;border-radius:0 8px 8px 0}.updated{font-size:13px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="/">← Friend Atlas</a>
+    <article class="card">
+      <h1>Privacy & safety</h1>
+      <p class="updated">Last updated July 17, 2026</p>
+      <p class="notice"><strong>Friend Atlas is unlisted, not access-restricted.</strong> Anyone with an atlas view link can see its city-level entries. Anyone with an active contribution link can add an entry. Keep links within the intended group.</p>
+
+      <h2>What is stored</h2>
+      <p>Friend Atlas stores the display name, city and country, place relationship, optional context, and recommendations that a participant submits. It also stores random browser and invitation identifiers needed to manage an atlas and a participant’s entries. <strong>Do not submit a home address, phone number, private email address, workplace schedule, private gathering place, or sensitive routine.</strong></p>
+
+      <h2>Why it is used</h2>
+      <p>The information is used to display a shared map and directory, help group members discover people who know a destination, and show recommendations from people they trust. Friend Atlas does not sell participant information.</p>
+
+      <h2>Who can see it</h2>
+      <p>Anyone who receives an atlas view link may be able to see its participant entries. Atlas pages are marked to discourage search-engine indexing, but that is not a security boundary. Recommendations may identify public businesses or attractions; personal markers remain city-level.</p>
+
+      <h2>Service providers</h2>
+      <p>The application is hosted on Render with PostgreSQL storage. Maps use OpenStreetMap data and CARTO map tiles. Some cohort flows use OpenStreetMap Nominatim to turn a city-and-country entry into city-level coordinates. Friend Atlas does not intentionally include participant names or cities in analytics events, and no advertising tracker is used in the current application.</p>
+
+      <h2>Editing, deletion, and retention</h2>
+      <p>A participant can edit or remove entries from the same browser that created them. If that browser access is lost, the atlas owner can remove the entry. Atlas owners can export data, lock contributions, remove entries or recommendations, rotate the contribution link, and delete the atlas. Data is retained until it is removed by the participant or atlas owner, subject to ordinary infrastructure backups and their expiration schedules.</p>
+
+      <h2>Contact</h2>
+      <p id="contactText">For access, correction, or deletion requests, contact the organizer who shared your atlas link.</p>
+    </article>
+  </main>
+  <script>
+    fetch('/api/public-config',{credentials:'same-origin'}).then(r=>r.ok?r.json():null).then(config=>{
+      if(!config?.ownerContact)return;
+      const el=document.getElementById('contactText');
+      const value=String(config.ownerContact);
+      el.textContent='For access, correction, or deletion requests, contact ';
+      if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)){
+        const link=document.createElement('a');link.href=`mailto:${value}`;link.textContent=value;el.appendChild(link);
+      }else{el.append(document.createTextNode(value))}
+      el.append(document.createTextNode('.'));
+    }).catch(()=>{});
+  </script>
+</body>
+</html>
