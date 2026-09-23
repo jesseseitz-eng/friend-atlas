@@ -1,33 +1,33 @@
 {
   "name": "friend-atlas",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Friend Atlas - Map your friendships across the world",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js",
-    "check": "node --check server/index.js && node --check server/db.js && node --check server/routes/atlas.js && node --check server/routes/jterm.js"
+    "check": "node --check server/index.js && node --check server/db.js && node --check server/places.js && node --check server/routes/atlas.js && node --check server/routes/jterm.js && node --check server/routes/places.js && node --check public/js/fa-core.js && node --check public/js/fa-map.js && node --check public/js/app.js",
+    "build:places": "node scripts/build-places.js"
   },
   "dependencies": {
     "compression": "^1.7.4",
-    "connect-pg-simple": "^9.0.1",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
-    "express-session": "^1.17.3",
     "express-validator": "^7.0.1",
     "helmet": "^7.1.0",
     "pg": "^8.11.3"
   },
   "devDependencies": {
+    "all-the-cities": "^3.1.0",
     "nodemon": "^3.0.1",
     "pg-mem": "^3.0.14",
     "supertest": "^7.2.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20"
   }
 }
