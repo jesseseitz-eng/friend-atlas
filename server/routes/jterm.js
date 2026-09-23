@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const db = require('../db');
+const places = require('../places');
 
 const router = express.Router();
 
@@ -99,6 +100,10 @@ async function ensureJtermAtlas() {
 
 async function geocodeLocation(query) {
   const raw = String(query || '').trim();
+  const local = places.resolve(raw);
+  if (local) {
+    return { city: [local.name, local.region].filter(Boolean).join(', '), country: local.country, lat: local.lat, lng: local.lng };
+  }
   const normalized = normalizeLocation(raw);
   const fallback = FALLBACK_GEO.find(([key]) => normalized === key || normalized.startsWith(`${key} `));
   if (fallback) {
@@ -175,8 +180,18 @@ function noteForPlace(text, placeName) {
   return (matching.length ? matching : lines).join('\n').slice(0, 500);
 }
 
-async function savePlace({ atlasId, sessionId, name, place, note, pinType, color, publishRecommendations = true }) {
-  const geo = await geocodeLocation(place);
+function structuredPlace(value) {
+  if (!value || typeof value !== 'object') return null;
+  const lat = Number(value.lat);
+  const lng = Number(value.lng);
+  const city = String(value.city || '').trim().slice(0, 200);
+  const country = String(value.country || '').trim().slice(0, 100);
+  if (!city || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { city, country: country || null, lat, lng };
+}
+
+async function savePlace({ atlasId, sessionId, name, place, picked, note, pinType, color, publishRecommendations = true }) {
+  const geo = structuredPlace(picked) || await geocodeLocation(place);
   if (!geo || Number.isNaN(geo.lat) || Number.isNaN(geo.lng)) {
     const error = new Error(`I could not find "${place}". Try "City, Country" or a nearby major city.`);
     error.statusCode = 400;
@@ -210,6 +225,7 @@ router.post('/join',
   body('notes').optional({ values: 'falsy' }).isString().trim().isLength({ max: 1200 }).withMessage('Recommendation is too long'),
   body('otherNotes').optional({ values: 'falsy' }).isString().trim().isLength({ max: 1200 }).withMessage('Other recs are too long'),
   body('shareScope').optional({ values: 'falsy' }).isString().trim().isLength({ max: 50 }).withMessage('Invalid sharing choice'),
+  body('place').optional({ values: 'falsy' }).isObject().withMessage('Invalid place'),
   validate,
   async (req, res) => {
     try {
@@ -235,6 +251,7 @@ router.post('/join',
         sessionId,
         name,
         place: primaryLocation,
+        picked: req.body.place,
         note: notes,
         pinType: relationship,
         color: PIN_COLORS[relationship],

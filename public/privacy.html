@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <title>Privacy & Safety — Friend Atlas</title>
   <style>
     :root{--ink:#17202a;--muted:#64706b;--paper:#fbf8f2;--card:#fff;--green:#177a5c;--line:#ded8cc}
@@ -18,7 +19,7 @@
     <a class="back" href="/">← Friend Atlas</a>
     <article class="card">
       <h1>Privacy & safety</h1>
-      <p class="updated">Last updated July 17, 2026</p>
+      <p class="updated">Last updated September 23, 2026</p>
       <p class="notice"><strong>Friend Atlas is unlisted, not access-restricted.</strong> Anyone with an atlas view link can see its city-level entries. Anyone with an active contribution link can add an entry. Keep links within the intended group.</p>
 
       <h2>What is stored</h2>
@@ -31,7 +32,7 @@
       <p>Anyone who receives an atlas view link may be able to see its participant entries. Atlas pages are marked to discourage search-engine indexing, but that is not a security boundary. Recommendations may identify public businesses or attractions; personal markers remain city-level.</p>
 
       <h2>Service providers</h2>
-      <p>The application is hosted on Render with PostgreSQL storage. Maps use OpenStreetMap data and CARTO map tiles. Some cohort flows use OpenStreetMap Nominatim to turn a city-and-country entry into city-level coordinates. Friend Atlas does not intentionally include participant names or cities in analytics events, and no advertising tracker is used in the current application.</p>
+      <p>The application is hosted on Render with PostgreSQL storage. Maps use OpenStreetMap data served by OpenFreeMap, and city search uses a built-in copy of GeoNames city data, so what you type into the city box stays on Friend Atlas. If a city typed into a class page cannot be matched, it may be looked up with OpenStreetMap Nominatim. Friend Atlas has no analytics or advertising trackers.</p>
 
       <h2>Editing, deletion, and retention</h2>
       <p>A participant can edit or remove entries from the same browser that created them. If that browser access is lost, the atlas owner can remove the entry. Atlas owners can export data, lock contributions, remove entries or recommendations, rotate the contribution link, and delete the atlas. Data is retained until it is removed by the participant or atlas owner, subject to ordinary infrastructure backups and their expiration schedules.</p>

@@ -1,50 +1,54 @@
 require('dotenv').config();
 const express = require('express');
-const session = require('express-session');
-const pgSession = require('connect-pg-simple')(session);
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const db = require('./db');
 const atlasRoutes = require('./routes/atlas');
 const jtermRoutes = require('./routes/jterm');
-const startupNationRoutes = require('./routes/startupnation');
+const placesRoutes = require('./routes/places');
+const { normalize } = require('./places');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
+const PUBLIC_DIR = path.join(__dirname, '../public');
+const STARTUP_NATION_CODE = (process.env.STARTUP_NATION_ATLAS_CODE || 'STNATN').toUpperCase();
 
-// Trust the first proxy hop so X-Forwarded-* headers are honored.
-// Render (and most PaaS) terminates TLS at a load balancer in front of the app,
-// which sets X-Forwarded-For. Without this, express-rate-limit throws
-// ERR_ERL_UNEXPECTED_X_FORWARDED_FOR and rate-limited routes fail.
+// Render terminates TLS at a proxy that sets X-Forwarded-For. Trusting the
+// first hop keeps express-rate-limit keyed on the real client address.
 if (isProd) {
   app.set('trust proxy', 1);
 }
+
+const MAP_HOSTS = ['https://tiles.openfreemap.org'];
 
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "unpkg.com", "cdnjs.cloudflare.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com", "unpkg.com"],
-      fontSrc: ["'self'", "fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "*.basemaps.cartocdn.com", "*.googleusercontent.com", "*.githubusercontent.com"],
-      connectSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'unpkg.com'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'fonts.googleapis.com', 'unpkg.com'],
+      fontSrc: ["'self'", 'fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'blob:', ...MAP_HOSTS],
+      connectSrc: ["'self'", ...MAP_HOSTS],
+      workerSrc: ["'self'", 'blob:'],
+      childSrc: ['blob:'],
     },
   },
   crossOriginEmbedderPolicy: false,
   referrerPolicy: { policy: 'no-referrer' },
 }));
 
-// Participant names and locations should never be indexed or cached as social
-// directory pages. This is privacy defense in depth, not access control.
+// Participant names and locations should never be indexed as directory pages.
+// This is privacy defense in depth, not access control.
 app.use((req, res, next) => {
-  if (/^\/(join\/|jterm\/?$|cbsj27\/?$)/i.test(req.path)) {
+  if (/^\/(join\/|jterm\/?$|cbsj27\/?$|startupnation|api\/)/i.test(req.path)) {
     res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
   }
   next();
@@ -52,64 +56,73 @@ app.use((req, res, next) => {
 
 app.use(compression());
 
-const limiter = rateLimit({
+app.use('/api/', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
-});
-
-const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 20,
-  message: { error: 'Too many login attempts, please try again later.' },
-});
-
-app.use('/api/', limiter);
-app.use('/auth/', authLimiter);
+}));
 
 app.use(cors({
   origin: isProd ? process.env.APP_URL : 'http://localhost:3000',
   credentials: true,
 }));
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '200kb' }));
 app.use(cookieParser());
 
-app.use(session({
-  store: new pgSession({
-    pool: db.pool,
-    tableName: 'session',          // matches the session_create migration
-    createTableIfMissing: true,    // create the session table if not present
-    pruneSessionInterval: 60 * 15, // prune expired sessions every 15 min
-  }),
-  name: 'fa.sid',
-  secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: isProd,
-    httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    sameSite: 'lax',
+// HTML pages reference /css and /js with ?v=<hash> so a deploy never mixes a
+// new page with day-old cached scripts.
+function assetVersion() {
+  const hash = crypto.createHash('sha1');
+  for (const dir of ['css', 'js']) {
+    const full = path.join(PUBLIC_DIR, dir);
+    if (!fs.existsSync(full)) continue;
+    for (const file of fs.readdirSync(full).sort()) hash.update(fs.readFileSync(path.join(full, file)));
+  }
+  return hash.digest('hex').slice(0, 10);
+}
+const ASSET_VERSION = assetVersion();
+const ORIGIN = (process.env.APP_URL || 'https://friendatlas.com').replace(/\/$/, '');
+const templates = {};
+function page(name) {
+  if (!templates[name] || !isProd) {
+    templates[name] = fs.readFileSync(path.join(PUBLIC_DIR, name), 'utf8').replace(/__V__/g, ASSET_VERSION).replace(/__ORIGIN__/g, ORIGIN);
+  }
+  return templates[name];
+}
+
+// Same people and city counting as the browser (public/js/fa-core.js).
+function summarize(friends) {
+  const people = new Set();
+  const cities = new Set();
+  for (const f of friends) {
+    people.add(String(f.name || '').trim().toLowerCase());
+    let city = String(f.city || '');
+    const country = String(f.country || '');
+    if (country && city.toLowerCase().endsWith(`, ${country.toLowerCase()}`)) city = city.slice(0, -(country.length + 2));
+    cities.add(`${normalize(city.split(',')[0])}|${normalize(country)}|${Math.round(Number(f.lat))}|${Math.round(Number(f.lng))}`);
+  }
+  return { people: people.size, cities: cities.size };
+}
+
+function escapeAttr(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+app.use(express.static(PUBLIC_DIR, {
+  index: false,
+  maxAge: isProd ? '7d' : 0,
+  etag: true,
+  setHeaders(res, filePath) {
+    if (filePath.endsWith('.html')) res.set('Cache-Control', 'no-cache');
   },
 }));
 
-app.use(express.static(path.join(__dirname, '../public'), {
-  maxAge: isProd ? '1d' : 0,
-  etag: true,
-}));
-
 app.use('/api/jterm', jtermRoutes);
-app.use('/api/startupnation', startupNationRoutes);
 app.use('/api/atlas', atlasRoutes);
-
-// Simple session-based auth endpoints (no WorkOS needed)
-app.get('/auth/session', (req, res) => {
-  res.json({ authenticated: !!req.cookies?.anon_session, user: null });
-});
-app.get('/auth/logout', (req, res) => {
-  req.session.destroy(() => res.redirect('/'));
-});
+app.use('/api/places', placesRoutes);
 
 app.get('/health', async (req, res) => {
   try {
@@ -120,10 +133,6 @@ app.get('/health', async (req, res) => {
   }
 });
 
-app.get('/api/me', (req, res) => {
-  res.json({ user: req.session.user || null });
-});
-
 app.get('/api/public-config', (req, res) => {
   res.json({
     ownerContact: process.env.OWNER_CONTACT || null,
@@ -131,75 +140,52 @@ app.get('/api/public-config', (req, res) => {
   });
 });
 
-// Read index.html template once at startup for OG tag injection
-const indexHtml = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
-
-// Prototype pages and polished class entry pages.
-app.get(['/test1', '/test1/', '/test2', '/test2/', '/test3', '/test3/'], (req, res) => {
-  const page = req.path.split('/').filter(Boolean)[0];
-  res.sendFile(path.join(__dirname, `../public/${page}.html`));
-});
-
 app.get(['/jterm', '/jterm/', '/cbsj27', '/cbsj27/'], (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/jterm.html'));
+  res.set('Cache-Control', 'no-cache').type('html').send(page('jterm.html'));
 });
 
-app.get(['/startupnation', '/startupnation/'], (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/startupnation.html'));
+// The Startup Nation class page is retired; its map lives on in the main app.
+app.get(['/startupnation', '/startupnation/', '/startupnationv2', '/startupnationv2/'], (req, res) => {
+  res.redirect(302, `/join/${STARTUP_NATION_CODE}`);
 });
 
-app.get(['/startupnationv2', '/startupnationv2/'], (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/startupnationv2.html'));
-});
+app.get(['/privacy', '/privacy/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'privacy.html')));
 
 app.get('/join/:code', async (req, res) => {
-  const code = req.params.code.toUpperCase();
+  const code = String(req.params.code || '').toUpperCase();
   const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+  let html = page('index.html');
 
   try {
-    const atlas = await db.getAtlasByCode(code);
+    const atlas = /^[A-Z0-9]{6}$/.test(code) ? await db.getAtlasByCode(code) : null;
     if (atlas) {
-      const stats = await db.getAtlasStats(atlas.id);
-      const friendCount = parseInt(stats.total_friends);
-      const cityCount = parseInt(stats.cities);
-      const countryCount = parseInt(stats.countries);
-
-      const ogTitle = 'Friend Atlas invitation';
-      const ogDesc = friendCount > 0
-        ? `${friendCount} friend${friendCount !== 1 ? 's' : ''} across ${cityCount} cit${cityCount !== 1 ? 'ies' : 'y'} in ${countryCount} countr${countryCount !== 1 ? 'ies' : 'y'} — drop your pin!`
-        : 'Add a city-level place to a shared Friend Atlas.';
-      const ogUrl = `${appUrl}/join/${code}`;
-      const ogImage = `${appUrl}/api/atlas/code/${code}/og-image`;
-
-      // Inject OG tags right before </head>. This avoids depending on the exact
-      // text of the static description tag (which can drift as the page evolves).
-      const ogTags = `
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="${ogTitle}">
-    <meta property="og:description" content="${ogDesc}">
-    <meta property="og:image" content="${ogImage}">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:url" content="${ogUrl}">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="${ogTitle}">
-    <meta name="twitter:description" content="${ogDesc}">
-    <meta name="twitter:image" content="${ogImage}">
+      const { people, cities } = summarize(await db.getFriendsByAtlas(atlas.id));
+      const title = atlas.map_name || `${atlas.owner_name}'s Friend Atlas`;
+      const description = people > 0
+        ? `${people} ${people === 1 ? 'person' : 'people'} in ${cities} ${cities === 1 ? 'city' : 'cities'}. See who you know around the world, and add yourself.`
+        : 'A shared map of where our friends live, where they are from, and the places they recommend. Add yourself.';
+      const tags = `
+    <meta property="og:title" content="${escapeAttr(title)}">
+    <meta property="og:description" content="${escapeAttr(description)}">
+    <meta property="og:url" content="${escapeAttr(`${appUrl}/join/${code}`)}">
+    <meta name="twitter:title" content="${escapeAttr(title)}">
+    <meta name="twitter:description" content="${escapeAttr(description)}">
   </head>`;
-
-      const html = indexHtml.replace('</head>', ogTags);
-      return res.send(html);
+      html = html
+        .replace(/<meta property="og:title"[^>]*>\s*/, '')
+        .replace(/<meta property="og:description"[^>]*>\s*/, '')
+        .replace('</head>', tags);
     }
   } catch (error) {
     console.error('OG tag injection error:', error);
   }
 
-  // Fallback: serve index.html with default meta
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  res.set('Cache-Control', 'no-cache').type('html').send(html);
 });
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
+  res.set('Cache-Control', 'no-cache').type('html').send(page('index.html'));
 });
 
 app.use((err, req, res, next) => {
@@ -213,9 +199,24 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
+// The Startup Nation class finished in May 2026. Keep its map readable but
+// closed to new entries unless explicitly reopened.
+async function closeFinishedClassAtlases() {
+  if (process.env.STARTUP_NATION_OPEN === 'true') return;
+  try {
+    await db.pool.query(
+      'UPDATE atlases SET contributions_locked = true, updated_at = NOW() WHERE code = $1 AND contributions_locked = false',
+      [STARTUP_NATION_CODE]
+    );
+  } catch (error) {
+    console.warn('Could not lock the Startup Nation atlas:', error.message);
+  }
+}
+
 async function start(port = PORT) {
   try {
     await db.initialize();
+    await closeFinishedClassAtlases();
     console.log('✓ Database initialized');
     return app.listen(port, () => {
       console.log(`✓ Friend Atlas running on port ${port}`);

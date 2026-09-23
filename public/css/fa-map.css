@@ -1,0 +1,45 @@
+/* Shared styles for the Friend Atlas map, city autocomplete, and toast. */
+.fa-marker{line-height:0}
+.fa-marker:hover,.fa-marker.is-top{z-index:5}
+.fa-pin{--ink:#1d2a26;position:relative;display:flex;flex-direction:column;align-items:center;border:0;padding:0 0 9px;background:transparent;cursor:pointer;font:inherit;transition:transform .18s cubic-bezier(.2,.9,.3,1.3),opacity .2s}
+.fa-pin::after{content:"";position:absolute;bottom:3px;left:50%;width:10px;height:10px;background:#fff;transform:translateX(-50%) rotate(45deg);border-radius:2px;box-shadow:2px 2px 4px rgba(29,42,38,.12)}
+.fa-pin-body{position:relative;z-index:1;display:flex;align-items:center;padding:3px;border-radius:999px;background:#fff;box-shadow:0 6px 18px rgba(29,42,38,.22),0 1px 2px rgba(29,42,38,.2)}
+.fa-face{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--c,#177a5c);color:#fff;font:700 11.5px/1 "DM Sans",system-ui,sans-serif;letter-spacing:.02em;border:2px solid #fff;box-sizing:border-box}
+.fa-face+.fa-face{margin-left:-6px}
+.fa-pin-more{margin:0 7px 0 5px;font:700 12px/1 "DM Sans",system-ui,sans-serif;color:var(--ink)}
+.fa-pin-label{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%) translateY(4px);white-space:nowrap;background:var(--ink);color:#fff;font:600 12px/1 "DM Sans",system-ui,sans-serif;padding:7px 9px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
+.fa-pin:hover,.fa-pin:focus-visible{transform:translateY(-2px) scale(1.06);z-index:5}
+.fa-pin:hover .fa-pin-label,.fa-pin:focus-visible .fa-pin-label,.fa-pin.is-selected .fa-pin-label{opacity:1;transform:translateX(-50%) translateY(0)}
+.fa-pin:focus-visible{outline:none}
+.fa-pin:focus-visible .fa-pin-body{outline:3px solid rgba(47,104,197,.45);outline-offset:2px}
+.fa-pin.is-selected{transform:scale(1.14);z-index:6}
+.fa-pin.is-selected .fa-pin-body{box-shadow:0 0 0 3px var(--ink),0 10px 26px rgba(29,42,38,.3)}
+.fa-pin.is-dim,.fa-cluster.is-dim{opacity:.28}
+.fa-cluster{position:relative;display:grid;place-items:center;width:46px;height:46px;padding:0;border-radius:50%;border:3px solid #fff;background:#1d2a26;color:#fff;cursor:pointer;box-shadow:0 8px 22px rgba(29,42,38,.3),0 0 0 5px rgba(29,42,38,.14);font:800 15px/1 "DM Sans",system-ui,sans-serif;transition:transform .18s}
+.fa-cluster:hover{transform:scale(1.08)}
+.fa-cluster-num{display:block;line-height:1}
+.fa-cluster-sub{position:absolute;top:calc(100% + 7px);left:50%;transform:translateX(-50%);white-space:nowrap;background:#1d2a26;color:#fff;font:600 11.5px/1 "DM Sans",system-ui,sans-serif;padding:6px 8px;border-radius:7px;opacity:0;pointer-events:none;transition:opacity .15s}
+.fa-cluster:hover .fa-cluster-sub,.fa-cluster:focus-visible .fa-cluster-sub{opacity:1}
+.fa-map-fallback{position:absolute;inset:0;display:grid;place-content:center;gap:4px;text-align:center;color:#66716c;background:#f1ece2;font-family:"DM Sans",system-ui,sans-serif;padding:24px}
+.fa-map-fallback strong{color:#1d2a26}
+.maplibregl-ctrl-attrib{font-family:"DM Sans",system-ui,sans-serif;font-size:10px}
+.maplibregl-ctrl-group{border-radius:12px!important;box-shadow:0 6px 18px rgba(29,42,38,.16)!important;overflow:hidden}
+.maplibregl-ctrl-group button{width:36px!important;height:36px!important}
+.maplibregl-canvas:focus{outline:none}
+
+/* City autocomplete */
+.fa-ac{position:relative}
+.fa-ac-list{position:absolute;z-index:40;left:0;right:0;top:calc(100% + 6px);display:none;max-height:300px;overflow:auto;background:#fffdf8;border:1px solid #d9d2c7;border-radius:14px;box-shadow:0 18px 44px rgba(29,42,38,.18);padding:6px}
+.fa-ac-list.open{display:block}
+.fa-ac-opt{display:grid;grid-template-columns:24px 1fr auto;align-items:center;gap:8px;padding:10px 10px;border-radius:10px;cursor:pointer;font-size:14px;color:#1d2a26}
+.fa-ac-opt.active,.fa-ac-opt:hover{background:#efe9dd}
+.fa-ac-flag{font-size:17px;line-height:1}
+.fa-ac-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fa-ac-region{font-weight:500;color:#66716c}
+.fa-ac-country{color:#66716c;font-size:12.5px;white-space:nowrap}
+.fa-ac-empty{padding:12px;color:#66716c;font-size:13px}
+input.is-picked{border-color:#177a5c!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23177a5c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:38px!important}
+
+/* Toast */
+.fa-toast{position:fixed;z-index:2000;left:50%;bottom:24px;transform:translate(-50%,12px);background:#1d2a26;color:#fff;border-radius:12px;padding:12px 16px;font:600 14px/1.3 "DM Sans",system-ui,sans-serif;box-shadow:0 16px 40px rgba(29,42,38,.28);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100vw - 32px)}
+.fa-toast.show{opacity:1;transform:translate(-50%,0)}

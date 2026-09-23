@@ -210,33 +210,10 @@ async function getAtlasByCode(code) {
   return result.rows[0];
 }
 
-async function getAtlasesByOwner(ownerId) {
-  const result = await pool.query(
-    `SELECT a.*, COUNT(f.id) as friend_count FROM atlases a
-     LEFT JOIN friends f ON f.atlas_id = a.id WHERE a.owner_id = $1
-     GROUP BY a.id ORDER BY a.created_at DESC`,
-    [ownerId]
-  );
-  return result.rows;
-}
-
 async function deleteAtlas(atlasId, ownerId) {
   const result = await pool.query(
     'DELETE FROM atlases WHERE id = $1 AND owner_id = $2 RETURNING *',
     [atlasId, ownerId]
-  );
-  return result.rows[0];
-}
-
-async function addOrUpdateFriend(atlasId, userId, name, city, country, lat, lng, note) {
-  const result = await pool.query(
-    `INSERT INTO friends (atlas_id, user_id, name, city, country, lat, lng, note)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     ON CONFLICT (atlas_id, user_id) DO UPDATE SET
-       name = EXCLUDED.name, city = EXCLUDED.city, country = EXCLUDED.country,
-       lat = EXCLUDED.lat, lng = EXCLUDED.lng, note = EXCLUDED.note
-     RETURNING *`,
-    [atlasId, userId, name, city, country, lat, lng, note || null]
   );
   return result.rows[0];
 }
@@ -338,13 +315,6 @@ async function getAtlasStats(atlasId) {
   return result.rows[0];
 }
 
-async function exportAtlas(atlasId, ownerId) {
-  const atlas = await pool.query('SELECT * FROM atlases WHERE id = $1 AND owner_id = $2', [atlasId, ownerId]);
-  if (!atlas.rows[0]) return null;
-  const friends = await getFriendsByAtlas(atlasId);
-  return { atlas: atlas.rows[0], friends, exportedAt: new Date().toISOString() };
-}
-
 async function addAnonymousFriend(atlasId, sessionId, opts) {
   const { name, city, country, lat, lng, note, color, referredBy, pinType } = opts;
   const type = pinType || 'current';
@@ -375,19 +345,6 @@ async function addAnonymousFriend(atlasId, sessionId, opts) {
   return result.rows[0];
 }
 
-// Owner-add: atlas owner seeds a pin for someone else (no session_id, marked added_by_owner)
-async function addOwnerPin(atlasId, opts) {
-  const { name, city, country, lat, lng, note, color, pinType } = opts;
-  const type = pinType || 'current';
-  const result = await pool.query(
-    `INSERT INTO friends (atlas_id, user_id, session_id, name, city, country, lat, lng,
-       note, color, pin_type, added_by_owner)
-     VALUES ($1, NULL, NULL, $2, $3, $4, $5, $6, $7, $8, $9, true) RETURNING *`,
-    [atlasId, name, city, country, lat, lng, note || null, color || null, type]
-  );
-  return result.rows[0];
-}
-
 // ---------- Recommendations ----------
 async function getRecsForFriend(friendId) {
   const r = await pool.query(
@@ -404,6 +361,22 @@ async function addRec(friendId, opts) {
     [friendId, category, name, note || null, url || null]
   );
   return r.rows[0];
+}
+// One query for every entry's recommendations, grouped by friend id.
+async function getRecsForFriends(friendIds) {
+  const grouped = new Map();
+  if (!friendIds.length) return grouped;
+  const ids = friendIds.map(Number);
+  const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
+  const r = await pool.query(
+    `SELECT * FROM recommendations WHERE friend_id IN (${placeholders}) ORDER BY friend_id, sort_order, id`,
+    ids
+  );
+  for (const row of r.rows) {
+    if (!grouped.has(row.friend_id)) grouped.set(row.friend_id, []);
+    grouped.get(row.friend_id).push(row);
+  }
+  return grouped;
 }
 async function replaceRecsForFriend(friendId, recommendations) {
   const client = await pool.connect();
@@ -429,32 +402,10 @@ async function replaceRecsForFriend(friendId, recommendations) {
     client.release();
   }
 }
-async function deleteRec(recId) {
-  const r = await pool.query('DELETE FROM recommendations WHERE id = $1 RETURNING *', [recId]);
-  return r.rows[0];
-}
-
-async function addJtermPrivateRec({ atlasId, friendId, sessionId, name, place, notes, otherNotes }) {
-  const result = await pool.query(
-    `INSERT INTO jterm_private_recs (atlas_id, friend_id, session_id, name, place, notes, other_notes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [atlasId, friendId || null, sessionId || null, name, place, notes, otherNotes || null]
-  );
-  return result.rows[0];
-}
 
 async function getFriendById(friendId) {
   const r = await pool.query('SELECT * FROM friends WHERE id = $1', [friendId]);
   return r.rows[0];
-}
-
-async function claimAnonymousFriends(sessionId, userId) {
-  const result = await pool.query(
-    `UPDATE friends SET user_id = $1, session_id = NULL, updated_at = NOW()
-     WHERE session_id = $2 AND user_id IS NULL RETURNING *`,
-    [userId, sessionId]
-  );
-  return result.rows;
 }
 
 async function removeFriendBySession(friendId, sessionId) {
@@ -465,25 +416,10 @@ async function removeFriendBySession(friendId, sessionId) {
   return result.rows[0];
 }
 
-async function getMembershipsByUser(userId) {
-  const result = await pool.query(
-    `SELECT a.*, COUNT(f2.id) as friend_count FROM friends f
-     JOIN atlases a ON f.atlas_id = a.id
-     LEFT JOIN friends f2 ON f2.atlas_id = a.id
-     WHERE f.user_id = $1 AND a.owner_id != $1
-     GROUP BY a.id ORDER BY f.created_at DESC`,
-    [userId]
-  );
-  return result.rows;
-}
-
 module.exports = {
-  pool, initialize, findOrCreateUser, createAtlas, getAtlasByCode,
-  getAtlasesByOwner, deleteAtlas, addOrUpdateFriend, getFriendsByAtlas,
-  removeFriend, getAtlasStats, exportAtlas, addAnonymousFriend,
+  pool, initialize, findOrCreateUser, createAtlas, getAtlasByCode, deleteAtlas,
+  getFriendsByAtlas, removeFriend, getAtlasStats, addAnonymousFriend,
   updateAtlasSettings, rotateContributionToken, updateFriendByOwner,
-  removeRecommendationByOwner,
-  addOwnerPin, claimAnonymousFriends, removeFriendBySession,
-  getMembershipsByUser, getFriendById,
-  getRecsForFriend, addRec, replaceRecsForFriend, deleteRec, addJtermPrivateRec,
+  removeRecommendationByOwner, removeFriendBySession, getFriendById,
+  getRecsForFriend, getRecsForFriends, addRec, replaceRecsForFriend,
 };
