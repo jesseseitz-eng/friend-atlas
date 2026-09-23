@@ -140,8 +140,24 @@ app.get('/api/public-config', (req, res) => {
   });
 });
 
-app.get(['/jterm', '/jterm/', '/cbsj27', '/cbsj27/'], (req, res) => {
-  res.set('Cache-Control', 'no-cache').type('html').send(page('jterm.html'));
+app.get(['/jterm', '/jterm/', '/cbsj27', '/cbsj27/'], async (req, res) => {
+  let html = page('jterm.html');
+  try {
+    // Once a few people have joined, the link preview shows the live count.
+    const atlas = await db.getAtlasByCode((process.env.JTERM_ATLAS_CODE || 'CBSJ27').toUpperCase());
+    if (atlas) {
+      const { people, cities } = summarize(await db.getFriendsByAtlas(atlas.id));
+      if (people >= 3) {
+        const description = `${people} J-Termers in ${cities} ${cities === 1 ? 'city' : 'cities'} so far. See who is where, grab their recs, and add yourself.`;
+        html = html
+          .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${escapeAttr(description)}">`)
+          .replace(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${escapeAttr(description)}">`);
+      }
+    }
+  } catch (error) {
+    console.error('J-Term preview error:', error);
+  }
+  res.set('Cache-Control', 'no-cache').type('html').send(html);
 });
 
 // The Startup Nation class page is retired; its map lives on in the main app.
