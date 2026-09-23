@@ -6,6 +6,13 @@ const router = express.Router();
 const db = require('../db');
 // No auth required — all operations use anonymous sessions
 
+const SESSION_COOKIE = {
+  maxAge: 365 * 24 * 60 * 60 * 1000,
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+};
+
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -30,7 +37,6 @@ function tokenMatches(atlas, token) {
 }
 
 function currentOwnerIds(req) {
-  if (req.session.user?.id) return [req.session.user.id];
   const sessionId = req.cookies?.anon_session;
   if (!sessionId) return [];
   // Keep legacy 16-character owner IDs working while new atlases use the
@@ -49,9 +55,10 @@ const lookupLimiter = rateLimit({
   message: { error: 'Too many incorrect atlas codes. Please try again later.' },
 });
 
+// Generous because a whole class can share one campus IP address.
 const contributionLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 30,
+  max: 200,
   message: { error: 'Too many contribution attempts. Please try again later.' },
 });
 
@@ -99,7 +106,7 @@ router.post('/create',
   validate,
   async (req, res) => {
   try {
-    const ownerName = req.body.name || (req.session.user && req.session.user.name) || 'Anonymous';
+    const ownerName = req.body.name.trim();
     let code, attempts = 0;
     do {
       code = generateCode();
@@ -109,23 +116,14 @@ router.post('/create',
     } while (attempts < 10);
     if (attempts >= 10) return res.status(500).json({ error: 'Could not generate unique code' });
 
-    // Use session user ID if authenticated, otherwise generate an anonymous owner ID
-    let ownerId = req.session.user?.id;
-    if (!ownerId) {
-      let sessionId = req.cookies?.anon_session;
-      if (!sessionId) {
-        sessionId = crypto.randomBytes(32).toString('hex');
-        res.cookie('anon_session', sessionId, {
-          maxAge: 365 * 24 * 60 * 60 * 1000,
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-        });
-      }
-      ownerId = `anon_${sessionId}`;
-      // Ensure anonymous user exists in users table
-      await db.findOrCreateUser({ id: ownerId, email: `${ownerId}@anon.local`, name: ownerName, profilePicture: null });
+    // Ownership is tied to a long-lived random browser cookie (no accounts).
+    let sessionId = req.cookies?.anon_session;
+    if (!sessionId) {
+      sessionId = crypto.randomBytes(32).toString('hex');
+      res.cookie('anon_session', sessionId, SESSION_COOKIE);
     }
+    const ownerId = `anon_${sessionId}`;
+    await db.findOrCreateUser({ id: ownerId, email: `${ownerId}@anon.local`, name: ownerName, profilePicture: null });
 
     const mapName = (req.body.mapName || '').trim() || null;
     const contributionToken = generateContributionToken();
@@ -157,9 +155,8 @@ router.get('/code/:code', lookupLimiter, param('code').isString().isLength({ min
   try {
     const atlas = await db.getAtlasByCode(req.params.code);
     if (!atlas) return res.status(404).json({ error: 'Atlas not found' });
-    const friends = await db.getFriendsByAtlas(atlas.id);
-    const recsByFriend = await Promise.all(friends.map((friend) => db.getRecsForFriend(friend.id)));
-    const stats = await db.getAtlasStats(atlas.id);
+    const [friends, stats] = await Promise.all([db.getFriendsByAtlas(atlas.id), db.getAtlasStats(atlas.id)]);
+    const recsByFriend = await db.getRecsForFriends(friends.map((friend) => friend.id));
     res.json({
       atlas: {
         id: atlas.id,
@@ -174,7 +171,7 @@ router.get('/code/:code', lookupLimiter, param('code').isString().isLength({ min
         createdAt: atlas.created_at,
         updatedAt: atlas.updated_at,
       },
-      friends: friends.map((f, index) => mapFriend(f, recsByFriend[index] || [])),
+      friends: friends.map((f) => mapFriend(f, recsByFriend.get(f.id) || [])),
       stats: {
         totalFriends: parseInt(stats.total_friends),
         totalPlaces: parseInt(stats.total_places),
@@ -189,57 +186,13 @@ router.get('/code/:code', lookupLimiter, param('code').isString().isLength({ min
   }
 });
 
-// Dynamic OG image generation (SVG → served as image)
-router.get('/code/:code/og-image', param('code').isString().isLength({ min: 6, max: 6 }).toUpperCase(), validate, async (req, res) => {
-  try {
-    const atlas = await db.getAtlasByCode(req.params.code);
-    if (!atlas) return res.status(404).send('Not found');
-    const stats = await db.getAtlasStats(atlas.id);
-    const friends = await db.getFriendsByAtlas(atlas.id);
-    const friendCount = parseInt(stats.total_friends);
-    const cityCount = parseInt(stats.cities);
-    const countryCount = parseInt(stats.countries);
-
-    // Sanitize for SVG text injection
-    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-    // Generate dots for friend locations on a simple world map projection
-    const dots = friends.slice(0, 30).map(f => {
-      const x = ((parseFloat(f.lng) + 180) / 360) * 1100 + 50;
-      const y = ((90 - parseFloat(f.lat)) / 180) * 500 + 65;
-      return `<circle cx="${x}" cy="${y}" r="6" fill="#818cf8" opacity="0.9"/><circle cx="${x}" cy="${y}" r="3" fill="#c7d2fe"/>`;
-    }).join('');
-
-    const shareTitle = 'Friend Atlas invitation';
-    const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
-      <rect width="1200" height="630" fill="#09090b"/>
-      <rect x="40" y="55" width="1120" height="520" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="1"/>
-      ${dots}
-      <text x="600" y="42" text-anchor="middle" fill="#a1a1aa" font-family="system-ui,sans-serif" font-size="16" font-weight="600">FRIEND ATLAS</text>
-      <rect x="340" y="590" width="520" height="36" rx="18" fill="#18181b" stroke="#3f3f46" stroke-width="1"/>
-      <text x="600" y="614" text-anchor="middle" fill="#fafafa" font-family="system-ui,sans-serif" font-size="16" font-weight="700">${shareTitle}</text>
-      <text x="160" y="614" text-anchor="middle" fill="#818cf8" font-family="system-ui,sans-serif" font-size="15" font-weight="700">${friendCount} friend${friendCount !== 1 ? 's' : ''}</text>
-      <text x="1040" y="614" text-anchor="middle" fill="#818cf8" font-family="system-ui,sans-serif" font-size="15" font-weight="700">${cityCount} cit${cityCount !== 1 ? 'ies' : 'y'} · ${countryCount} countr${countryCount !== 1 ? 'ies' : 'y'}</text>
-    </svg>`;
-
-    res.set({
-      'Content-Type': 'image/svg+xml',
-      'Cache-Control': 'public, max-age=3600',
-    });
-    res.send(svg);
-  } catch (error) {
-    console.error('OG image error:', error);
-    res.status(500).send('Error');
-  }
-});
-
 router.get('/:id/export', param('id').isInt(), validate, async (req, res) => {
   try {
     const atlas = await db.pool.query('SELECT * FROM atlases WHERE id = $1', [req.params.id]);
     if (!atlas.rows[0]) return res.status(404).json({ error: 'Atlas not found' });
     if (!isAtlasOwner(req, atlas.rows[0])) return res.status(403).json({ error: 'Only the atlas owner can export data' });
     const friends = await db.getFriendsByAtlas(req.params.id);
-    const recsByFriend = await Promise.all(friends.map((friend) => db.getRecsForFriend(friend.id)));
+    const recsByFriend = await db.getRecsForFriends(friends.map((friend) => friend.id));
     res.json({
       atlas: {
         id: atlas.rows[0].id,
@@ -250,7 +203,7 @@ router.get('/:id/export', param('id').isInt(), validate, async (req, res) => {
         createdAt: atlas.rows[0].created_at,
         updatedAt: atlas.rows[0].updated_at,
       },
-      friends: friends.map((friend, index) => mapFriend(friend, recsByFriend[index] || [])),
+      friends: friends.map((friend) => mapFriend(friend, recsByFriend.get(friend.id) || [])),
       exportedAt: new Date().toISOString(),
     });
   } catch (error) {
@@ -285,7 +238,7 @@ router.post('/code/:code/join-anon',
       const atlas = await db.getAtlasByCode(req.params.code);
       if (!atlas) return res.status(404).json({ error: 'Atlas not found' });
       if (atlas.contributions_locked) return res.status(423).json({ error: 'This atlas is currently closed to new contributions' });
-      if (!tokenMatches(atlas, req.body.inviteToken)) {
+      if (!tokenMatches(atlas, req.body.inviteToken) && !isAtlasOwner(req, atlas)) {
         return res.status(403).json({ error: 'Open the contribution link from the atlas owner to add a place' });
       }
 
@@ -309,13 +262,8 @@ router.post('/code/:code/join-anon',
       const recommendations = sanitizeRecommendations(req.body.recommendations);
       const savedRecommendations = await db.replaceRecsForFriend(friend.id, recommendations);
 
-      // Set long-lived cookie so anonymous user can edit their pin later
-      res.cookie('anon_session', sessionId, {
-        maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-      });
+      // Long-lived cookie so the contributor can edit or remove the entry later.
+      res.cookie('anon_session', sessionId, SESSION_COOKIE);
 
       res.json({
         success: true,
@@ -367,7 +315,6 @@ router.patch('/code/:code/rename-map',
   }
 );
 
-// Remove a friend pin (by anon session)
 router.patch('/code/:code/settings',
   param('code').isString().isLength({ min: 6, max: 6 }).toUpperCase(),
   body('contributionsLocked').optional().isBoolean().withMessage('Invalid lock setting'),
