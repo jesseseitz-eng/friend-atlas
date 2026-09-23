@@ -76,7 +76,7 @@
       const key = String(entry.name || '').toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
-      faces.push(`<span class="fa-face" style="--c:${relation(entry.pinType).color}">${esc(initials(entry.name))}</span>`);
+      faces.push(`<span class="fa-face${entry.isSample ? ' is-sample' : ''}" style="--c:${relation(entry.pinType).color}">${esc(initials(entry.name))}</span>`);
       if (faces.length === 3) break;
     }
     return faces.join('');
@@ -88,11 +88,16 @@
     el.type = 'button';
     el.className = 'fa-pin';
     el.dataset.key = group.key;
-    el.setAttribute('aria-label', `${group.city}${group.country ? `, ${group.country}` : ''}: ${plural(group.people, 'person', 'people')}`);
+    // Example profiles (never saved) get a dashed, always-labeled pin.
+    const sample = group.entries.length > 0 && group.entries.every((e) => e.isSample);
+    if (sample) el.classList.add('is-sample');
+    el.setAttribute('aria-label', sample
+      ? `Example profile in ${group.city}`
+      : `${group.city}${group.country ? `, ${group.country}` : ''}: ${plural(group.people, 'person', 'people')}`);
     const extra = group.people > 3 ? `<span class="fa-pin-more">+${group.people - 3}</span>` : '';
     el.innerHTML = `
       <span class="fa-pin-body">${facesHtml(group.entries)}${extra}</span>
-      <span class="fa-pin-label">${flag(group.country)} ${esc(group.city)}</span>`;
+      <span class="fa-pin-label">${sample ? `Example<span class="fa-pin-city"> · ${flag(group.country)} ${esc(group.city)}</span>` : `${flag(group.country)} ${esc(group.city)}`}</span>`;
     return el;
   }
 
